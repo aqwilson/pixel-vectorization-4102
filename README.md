@@ -6,6 +6,7 @@ Pixel art is difficult to upscale using traditional vectorization methods due to
 
 # Background 
 This project is based on a paper called *Depixelizing Pixel Art* by Kopf and Lischinski that was published in SIGGRAPH 2011. It discussed the difficulties of pixel art vectorization, especially with traditional algorithms, and provides an alternative algorithm for vectorization. It involves selecting pixels that belong to lines, and extracting these lines into B-Splines, which can then be rendered using traditional vector-rendering methods. It relies on use of heuristics to select meaningful edge segments to minimize complex computations at runtime.
+
 https://johanneskopf.de/publications/pixelart/
 
 # Challenge
