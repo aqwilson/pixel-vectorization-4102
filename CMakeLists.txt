@@ -7,6 +7,8 @@ project(Image_Vectorization)
 set(HDRS
     include/EdgeDetection.h
     include/Hybrid.h
+    include/Node.h
+    include/PixelGraph.h
 )
 
 # Specify project source files
@@ -14,6 +16,8 @@ set(SRCS
     src/EdgeDetection.cpp
     src/Hybrid.cpp
     src/Main.cpp
+    src/Node.cpp
+    src/PixelGraph.cpp
 )
 
 # Add executable based on the source files, using the project name as the executable name
