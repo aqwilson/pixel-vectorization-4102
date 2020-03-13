@@ -1,6 +1,4 @@
-#ifndef NODE_H
-#define NODE_H
-
+#pragma once
 #include <opencv2/core.hpp>
 
 class Node {
@@ -23,5 +21,3 @@ public:
     ~Node();
 
 };
-
-#endif

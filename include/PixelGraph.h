@@ -1,5 +1,4 @@
-#ifndef PIXEL_GRAPH_H
-#define PIXEL_GRAPH_H
+#pragma once
 
 #include <vector>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -19,5 +18,3 @@ public:
     void brutePrune();
     void runHeuristics();
 };
-
-#endif
