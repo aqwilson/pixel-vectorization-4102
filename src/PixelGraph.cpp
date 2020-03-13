@@ -1,8 +1,5 @@
 #include "PixelGraph.h"
 
-//using namespace std;
-//using namespace cv;
-
 PixelGraph::PixelGraph() {
     img = NULL;
 }
