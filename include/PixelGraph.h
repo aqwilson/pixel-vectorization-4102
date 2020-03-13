@@ -9,14 +9,14 @@
 class PixelGraph {
 
 public:
-	std::vector<std::vector<Node*>*>* graph;
-	cv::Mat* img;
+    std::vector<std::vector<Node*>*>* graph;
+    cv::Mat* img;
 
-	PixelGraph();
-	PixelGraph(cv::Mat*);
-	~PixelGraph();
+    PixelGraph();
+    PixelGraph(cv::Mat*);
+    ~PixelGraph();
 
-	void generateGraph();
-	void brutePrune();
-	void runHeuristics();
+    void generateGraph();
+    void brutePrune();
+    void runHeuristics();
 };
