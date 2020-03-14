@@ -104,8 +104,110 @@ void PixelGraph::generateGraph() {
     }
 }
 
+bool PixelGraph::comparePixels(Node* n1, Node* n2) {
+    if (n1 == NULL || n2 == NULL) {
+        return false;
+    }
+
+    cv::Vec3b n1Vec = img->at<cv::Vec3b>(n1->pos);
+    cv::Vec3b n2Vec = img->at<cv::Vec3b>(n2->pos);
+
+    return (n1Vec[0] == n2Vec[0] && n1Vec[1] == n2Vec[1] && n1Vec[2] == n2Vec[2]);
+}
+
+void PixelGraph::firstNeighbourhoodPrunePass(Node* n) {
+    if (n->top != NULL && !comparePixels(n, n->top)) {
+        n->top->bottom = NULL;
+        n->top = NULL;
+    }
+
+    if (n->bottom != NULL && !comparePixels(n, n->bottom)) {
+        n->bottom->top = NULL;
+        n->bottom = NULL;
+    }
+
+    if (n->left != NULL && !comparePixels(n, n->left)) {
+        n->left->right = NULL;
+        n->left = NULL;
+    }
+
+    if (n->right != NULL && !comparePixels(n, n->right)) {
+        n->right->left = NULL;
+        n->right = NULL;
+    }
+
+    if (n->topLeft != NULL && !comparePixels(n, n->topLeft)) {
+        n->topLeft->bottomRight = NULL;
+        n->topLeft = NULL;
+    }
+
+    if (n->topRight != NULL && !comparePixels(n, n->topRight)) {
+        n->topRight->bottomLeft = NULL;
+        n->topRight = NULL;
+    }
+
+    if (n->bottomLeft != NULL && !comparePixels(n, n->bottomLeft)) {
+        n->bottomLeft->topRight = NULL;
+        n->bottomLeft = NULL;
+    }
+
+    if (n->bottomRight != NULL && !comparePixels(n, n->bottomRight)) {
+        n->bottomRight->topLeft = NULL;
+        n->bottomRight = NULL;
+    }
+}
+
+void PixelGraph::flatPruning(Node* n) {
+    // top left
+    bool leftCompare = comparePixels(n, n->left);
+    bool topCompare = comparePixels(n, n->top);
+    bool topLeftCompare = comparePixels(n, n->topLeft);
+    bool rightCompare = comparePixels(n, n->left);
+    bool bottomCompare = comparePixels(n, n->top);
+    bool topRightCompare = comparePixels(n, n->topLeft);
+    bool bottomRightCompare = comparePixels(n, n->bottomRight);
+    bool bottomLeftCompare = comparePixels(n, n->bottomLeft);
+
+    if (leftCompare && topCompare && topLeftCompare) {
+        if (n->topLeft != NULL) {
+            n->topLeft->bottomRight = NULL;
+            n->topLeft = NULL;
+        }
+    }
+
+    if (topCompare && topRightCompare && rightCompare) {
+        if (n->topRight != NULL) {
+            n->topRight->bottomLeft = NULL;
+            n->topRight = NULL;
+        }
+    }
+
+    if (rightCompare && bottomRightCompare && bottomCompare) {
+        if (n->bottomRight != NULL) {
+            n->bottomRight->topLeft = NULL;
+            n->bottomRight = NULL;
+        }
+    }
+
+    if (bottomCompare && bottomLeftCompare && leftCompare) {
+        if (n->bottomLeft != NULL) {
+            n->bottomLeft->topRight = NULL;
+            n->bottomLeft = NULL;
+        }
+    }
+
+}
+
 void PixelGraph::brutePrune() {
     // break up based on colour
+    for (int i = 0; i < graph->size(); i++) {
+        for (int j = 0; j < graph->at(i)->size(); j ++) {
+            Node* n = graph->at(i)->at(j);
+
+            firstNeighbourhoodPrunePass(n);
+            flatPruning(n);
+        }
+    }
 }
 
 void PixelGraph::runHeuristics() {

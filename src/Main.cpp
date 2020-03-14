@@ -18,6 +18,7 @@ int main() {
     PixelGraph* p = new PixelGraph(&src);
 
     p->generateGraph();
+    p->brutePrune();
     p->runHeuristics();
 
     // Show the image
