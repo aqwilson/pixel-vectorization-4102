@@ -17,4 +17,9 @@ public:
     void generateGraph();
     void brutePrune();
     void runHeuristics();
+
+private:
+    void runCurveHeuristic(cv::Point, cv::Point2f*);
+    void runSparseHeuristic(cv::Point, cv::Point2f*);
+    void runIslandHeuristic(cv::Point, cv::Point2f*);
 };

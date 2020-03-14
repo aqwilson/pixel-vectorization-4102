@@ -12,14 +12,13 @@ int main() {
     cv::Mat src;
 
     // Attempt to load the image (as greyscale). Ask user to re-enter path on failure.
-    src = cv::imread("./input/Cactuar_Original.png", 0);
+    src = cv::imread("./input/Cactuar_Original.png");
     cv::namedWindow("thingy", CV_WINDOW_AUTOSIZE);
-
-    src.at<uchar>(0, 0) = 0;
 
     PixelGraph* p = new PixelGraph(&src);
 
     p->generateGraph();
+    p->runHeuristics();
 
     // Show the image
     cv::imshow("thingy", src);
