@@ -162,9 +162,9 @@ void PixelGraph::flatPruning(Node* n) {
     bool leftCompare = comparePixels(n, n->left);
     bool topCompare = comparePixels(n, n->top);
     bool topLeftCompare = comparePixels(n, n->topLeft);
-    bool rightCompare = comparePixels(n, n->left);
-    bool bottomCompare = comparePixels(n, n->top);
-    bool topRightCompare = comparePixels(n, n->topLeft);
+    bool rightCompare = comparePixels(n, n->right);
+    bool bottomCompare = comparePixels(n, n->bottom);
+    bool topRightCompare = comparePixels(n, n->topRight);
     bool bottomRightCompare = comparePixels(n, n->bottomRight);
     bool bottomLeftCompare = comparePixels(n, n->bottomLeft);
 
