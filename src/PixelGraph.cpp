@@ -35,71 +35,29 @@ PixelGraph::~PixelGraph() {
     delete graph;
 }
 
+Node* PixelGraph::getIfExists(int r, int c) {
+    if (r < 0 || r >= graph->size() || c < 0 || c >= graph->at(r)->size()) {
+        return nullptr;
+    }
+    return graph->at(r)->at(c);
+}
+
 void PixelGraph::generateGraph() {
     // CV_8UC3
-    for (int i = 0; i < graph->size(); i++) {
-        for (int j = 0; j < graph->at(i)->size(); j++) {
-            Node* n = graph->at(i)->at(j);
+    for (int r = 0; r < graph->size(); r++) {
+        for (int c = 0; c < graph->at(r)->size(); c++) {
+            Node* n = graph->at(r)->at(c);
 
-            if (i == 0) {
-                n->bottom = graph->at(i + 1)->at(j);
+            n->topLeft = getIfExists(r - 1, c - 1);
+            n->top = getIfExists(r - 1, c);
+            n->topRight = getIfExists(r - 1, c + 1);
 
-                if (j == 0) {
-                    n->bottomRight = graph->at(i + 1)->at(j + 1);
-                    n->right = graph->at(i)->at(j + 1);
-                }
-                else if (j == img->cols - 1) {
-                    n->bottomLeft = graph->at(i + 1)->at(j - 1);
-                    n->left = graph->at(i)->at(j - 1);
-                }
-                else {
-                    n->bottomRight = graph->at(i + 1)->at(j + 1);
-                    n->right = graph->at(i)->at(j + 1);
-                    n->bottomLeft = graph->at(i + 1)->at(j - 1);
-                    n->left = graph->at(i)->at(j - 1);
-                }
-            }
-            else if (i == img->rows - 1) {
-                n->top = graph->at(i - 1)->at(j);
-                
-                if (j == 0) {
-                    n->topRight = graph->at(i - 1)->at(j + 1);
-                    n->right = graph->at(i)->at(j + 1);
-                }
-                else if (j == img->cols - 1) {
-                    n->topLeft = graph->at(i - 1)->at(j - 1);
-                    n->left = graph->at(i)->at(j - 1);
-                }
-                else {
-                    n->topRight = graph->at(i - 1)->at(j + 1);
-                    n->right = graph->at(i)->at(j + 1);
-                    n->topLeft = graph->at(i - 1)->at(j - 1);
-                    n->left = graph->at(i)->at(j - 1);
-                }
-            }
-            else {
-                n->top = graph->at(i - 1)->at(j);
-                n->bottom = graph->at(i + 1)->at(j);
+            n->left = getIfExists(r, c - 1);
+            n->right = getIfExists(r, c + 1);
 
-                if (j == 0) {
-                    n->topRight = graph->at(i - 1)->at(j + 1);
-                    n->right = graph->at(i)->at(j + 1);
-                    n->bottomRight = graph->at(i + 1)->at(j + 1);
-                }
-                else if (j == img->cols - 1) {
-                    n->topLeft = graph->at(i - 1)->at(j - 1);
-                    n->left = graph->at(i)->at(j - 1);
-                    n->bottomLeft = graph->at(i - 1)->at(j - 1);
-                }
-                else {
-                    n->topRight = graph->at(i - 1)->at(j + 1);
-                    n->right = graph->at(i)->at(j + 1);
-                    n->bottomRight = graph->at(i + 1)->at(j + 1);
-                    n->topLeft = graph->at(i - 1)->at(j - 1);
-                    n->left = graph->at(i)->at(j - 1);
-                    n->bottomLeft = graph->at(i - 1)->at(j - 1);
-                }
-            }
+            n->bottomLeft = getIfExists(r + 1, c - 1);
+            n->bottom = getIfExists(r + 1, c);
+            n->bottomRight = getIfExists(r + 1, c + 1);
         }
     }
 }

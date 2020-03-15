@@ -14,6 +14,7 @@ public:
     PixelGraph(cv::Mat*);
     ~PixelGraph();
 
+    Node* getIfExists(int r, int c);
     void generateGraph();
     void brutePrune();
     void runHeuristics();
