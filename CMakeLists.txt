@@ -6,6 +6,7 @@ project(Image_Vectorization)
 # Specify project header files
 set(HDRS
     include/EdgeDetection.h
+    include/GenerateSvg.h
     include/Hybrid.h
     include/Node.h
     include/PixelGraph.h
@@ -14,6 +15,7 @@ set(HDRS
 # Specify project source files
 set(SRCS
     src/EdgeDetection.cpp
+    src/GenerateSvg.cpp
     src/Hybrid.cpp
     src/Main.cpp
     src/Node.cpp

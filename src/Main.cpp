@@ -4,16 +4,18 @@
 #include <opencv2/core.hpp>
 #include "opencv2/highgui/highgui.hpp"
 
+#include "GenerateSvg.h"
 #include "PixelGraph.h"
 
-int main() {
+extern const bool DEBUG_SHOW_GRAPH = 1;
+extern const bool DEBUG_SHOW_GRID = 0;
 
+int pixelToVector() {
+    const char* windowName = "Pixel to Vector";
+    cv::namedWindow(windowName, CV_WINDOW_AUTOSIZE);
 
-    cv::Mat src;
-
-    // Attempt to load the image (as greyscale). Ask user to re-enter path on failure.
-    src = cv::imread("./input/Cactuar_Original.png");
-    cv::namedWindow("thingy", CV_WINDOW_AUTOSIZE);
+    // Load the image
+    cv::Mat src = cv::imread("./input/Cactuar_Cleaned.png");
 
     PixelGraph* p = new PixelGraph(&src);
 
@@ -21,9 +23,16 @@ int main() {
     p->brutePrune();
     p->runHeuristics();
 
+    generateSvg(src, p, "bitmap_to_svg.svg");
+
     // Show the image
-    cv::imshow("thingy", src);
-    cv::waitKey(0);
+    //cv::imshow(windowName, src);
+    //cv::waitKey(0);
+
+    delete p;
     return 0;
-    //edgeDetection::edgeDetectionMain();
+}
+
+int main() {
+    return pixelToVector();
 }
