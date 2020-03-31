@@ -27,6 +27,7 @@ private:
     void runIslandHeuristic(cv::Point, cv::Point2f*);
 
     void connections(std::vector<std::vector<ConnType>>&, cv::Point);
+    int calculateValence(cv::Point);
 
     bool comparePixels(Node*, Node*);
     void firstNeighbourhoodPrunePass(Node*);

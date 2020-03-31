@@ -177,9 +177,9 @@ void PixelGraph::runHeuristics() {
         for (int j = 0; j < img->cols - 1; j++){
             //This will be the top left of our 2 x 2 region, and we should never go out of bounds because of the loop max
             Node* topLeftNode = graph->at(i)->at(j);
-            Node* topRightNode = graph->at(i + 1)->at(j);
-            Node* bottomLeftNode = graph->at(i)->at(j + 1);
-            Node* bottomRightNode = graph->at(i + 1)->at(j + 1);
+            Node* topRightNode = graph->at(i)->at(j + 1.0);
+            Node* bottomLeftNode = graph->at(i + 1.0)->at(j);
+            Node* bottomRightNode = graph->at(i + 1.0)->at(j + 1.0);
 
             // If the following is true, we have two diagonal connections, so one must be removed
             if (topLeftNode->bottomRight != NULL && topRightNode->bottomLeft != NULL) {
@@ -278,6 +278,21 @@ void PixelGraph::runSparseHeuristic(cv::Point topLeft, cv::Point2f* weightVals){
 void PixelGraph::runIslandHeuristic(cv::Point topLeft, cv::Point2f* weightVals){
     weightVals->x = 0.0f;
     weightVals->y = 0.0f;
+
+    // fetch other points
+    cv::Point topRight = cv::Point(topLeft.x + 1, topLeft.y);
+    cv::Point bottomLeft = cv::Point(topLeft.x, topLeft.y + 1);
+    cv::Point bottomRight = cv::Point(topLeft.x + 1, topLeft.y + 1);
+
+    // if there is top left/bottom right valence of 1, then there is an island on this diagonal
+    if (calculateValence(topLeft) == 1 || calculateValence(bottomRight) == 1) {
+        weightVals->x = 5.0f; // magic number 5 is from the paper
+    }
+
+    // if there is a top right/bottom left valence of 1, then there is an island on this diagonal
+    if (calculateValence(topRight) == 1 || calculateValence(bottomLeft) == 1) {
+        weightVals->y = 5.0f;
+    }
 }
 
 
@@ -475,4 +490,23 @@ void PixelGraph::connections(std::vector<std::vector<ConnType>>& connGraph, cv::
             }
         }
     }
+}
+
+// calculate the valence of a given node
+int PixelGraph::calculateValence(cv::Point p) {
+    int connections = 0;
+
+    Node* n = graph->at(p.y)->at(p.x);
+
+    // incremement number of connections if one exists
+    if (n->bottom != NULL) connections++;
+    if (n->bottomLeft != NULL) connections++;
+    if (n->left != NULL) connections++;
+    if (n->topLeft != NULL) connections++;
+    if (n->top != NULL) connections++;
+    if (n->topRight != NULL) connections++;
+    if (n->right != NULL) connections++;
+    if (n->bottomRight != NULL) connections++;
+
+    return connections;
 }
