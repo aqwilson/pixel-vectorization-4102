@@ -216,33 +216,33 @@ void PixelGraph::runSparseHeuristic(cv::Point topLeft, cv::Point2f* weightVals){
     weightVals->x = 0.0f;
     weightVals->y = 0.0f;
 
-    // if the pixels are the same for whatever reason, then weight is 0, because there is no difference
+    // if the topLeft and topRight are the same for whatever reason, then weight is 0, because there is no difference
     if (comparePixels(graph->at(topLeft.y)->at(topLeft.x), graph->at(topLeft.y)->at(topLeft.x + 1.0))) {
         return;
     }
 
     // create 2 component connection graphs for comparison
-    std::vector<std::vector<int>> connectedTL;
-    std::vector<std::vector<int>> connectedTR;
+    std::vector<std::vector<ConnType>> connectedTL;
+    std::vector<std::vector<ConnType>> connectedTR;
 
     // fill with "untested" value
     for (int i = 0; i < 8; i++) {
-        std::vector<int> rowTL;
-        std::vector<int> rowTR;
+        std::vector<ConnType> rowTL;
+        std::vector<ConnType> rowTR;
         for (int j = 0; j < 8; j++) {
-            rowTL.push_back(0);
-            rowTR.push_back(0);
+            rowTL.push_back(UNTESTED);
+            rowTR.push_back(UNTESTED);
         }
         connectedTL.push_back(rowTL);
         connectedTR.push_back(rowTR);
     }
 
     // we know of 2 connected nodes already; put them where they belong
-    connectedTL[3][3] = 1;
-    connectedTL[4][4] = 1;
+    connectedTL[3][3] = CONNECTED;
+    connectedTL[4][4] = CONNECTED;
 
-    connectedTR[3][4] = 1;
-    connectedTR[4][3] = 1;
+    connectedTR[3][4] = CONNECTED;
+    connectedTR[4][3] = CONNECTED;
 
     // generate connections
     connections(connectedTL, topLeft);
@@ -254,11 +254,11 @@ void PixelGraph::runSparseHeuristic(cv::Point topLeft, cv::Point2f* weightVals){
 
     for (int y = 0; y < 8; y++) {
         for (int x = 0; x < 8; x++) {
-            if (connectedTL[y][x] == 1) {
+            if (connectedTL[y][x] == CONNECTED) {
                 tlConnNum++;
             }
 
-            if (connectedTR[y][x] == 1) {
+            if (connectedTR[y][x] == CONNECTED) {
                 trConnNum++;
             }
         }
@@ -282,7 +282,7 @@ void PixelGraph::runIslandHeuristic(cv::Point topLeft, cv::Point2f* weightVals){
 
 
 // create a component-based connection graph to quickly count number of nodes connected.
-void PixelGraph::connections(std::vector<std::vector<int>>& connGraph, cv::Point topLeft) {
+void PixelGraph::connections(std::vector<std::vector<ConnType>>& connGraph, cv::Point topLeft) {
     bool remainingUntested = true;
     bool reachableUntested = true;
     int iteration = 0;
@@ -299,13 +299,13 @@ void PixelGraph::connections(std::vector<std::vector<int>>& connGraph, cv::Point
             for (int x = 0; x < 8; x++) {
 
                 // untested
-                if (connGraph[y][x] == 0) {
+                if (connGraph[y][x] == CONNECTED) {
                     remainingUntested = true;
                     continue;
                 }
 
                 // not yet connected
-                if (connGraph[y][x] == 2 || connGraph[y][x] == -1) {
+                if (connGraph[y][x] == DISCONNECTED || connGraph[y][x] == INVALID) {
                     continue;
                 }
 
@@ -314,7 +314,7 @@ void PixelGraph::connections(std::vector<std::vector<int>>& connGraph, cv::Point
                 int realX = topLeft.x + x - 3;
 
                 if (realY < 0 || realY >= graph->size() || realX < 0 || realX >= graph->at(0)->size()) {
-                    connGraph[y][x] = -2;
+                    connGraph[y][x] = INVALID;
                     continue;
                 }
 
@@ -325,44 +325,44 @@ void PixelGraph::connections(std::vector<std::vector<int>>& connGraph, cv::Point
 
                     // checking node above
                     // if not already connected and not out of bounds, look for a connection
-                    if (connGraph[y - 1.0][x] != 1 && connGraph[y - 1.0][x] != -1) {
+                    if (connGraph[y - 1.0][x] != CONNECTED && connGraph[y - 1.0][x] != INVALID) {
                         if (realY <= 0) {
-                            connGraph[y - 1.0][x] = -1;
+                            connGraph[y - 1.0][x] = INVALID;
                         }
                         else if (graph->at(realY)->at(realX)->top != NULL) {
-                            connGraph[y - 1.0][x] = 1;
+                            connGraph[y - 1.0][x] = CONNECTED;
                         }
                         else {
-                            connGraph[y - 1.0][x] = 2;
+                            connGraph[y - 1.0][x] = DISCONNECTED;
                         }
                     }
 
                     // check node at topLeft
                     if (x > 0) {
-                        if (connGraph[y - 1.0][x - 1.0] != 1 && connGraph[y - 1.0][x - 1.0] != -1) {
+                        if (connGraph[y - 1.0][x - 1.0] != CONNECTED && connGraph[y - 1.0][x - 1.0] != INVALID) {
                             if (realY <= 0 || realX <= 0) {
-                                connGraph[y - 1.0][x - 1.0] = -1;
+                                connGraph[y - 1.0][x - 1.0] = INVALID;
                             }
                             else if (graph->at(realY)->at(realX)->topLeft != NULL) {
-                                connGraph[y - 1.0][x - 1.0] = 1;
+                                connGraph[y - 1.0][x - 1.0] = CONNECTED;
                             }
                             else {
-                                connGraph[y - 1.0][x - 1.0] = 2;
+                                connGraph[y - 1.0][x - 1.0] = DISCONNECTED;
                             }
                         }
                     }
 
                     // check topRight
                     if (x < 7) {
-                        if (connGraph[y - 1.0][x + 1.0] != 1 && connGraph[y - 1.0][x + 1.0] != -1) {
+                        if (connGraph[y - 1.0][x + 1.0] != CONNECTED && connGraph[y - 1.0][x + 1.0] != INVALID) {
                             if (realY <= 0 || realX >= graph->at(0)->size()) {
-                                connGraph[y - 1.0][x + 1.0] = -1;
+                                connGraph[y - 1.0][x + 1.0] = INVALID;
                             }
                             else if (graph->at(realY)->at(realX)->topRight != NULL) {
-                                connGraph[y - 1.0][x + 1.0] = 1;
+                                connGraph[y - 1.0][x + 1.0] = CONNECTED;
                             }
                             else {
-                                connGraph[y - 1.0][x + 1.0] = 2;
+                                connGraph[y - 1.0][x + 1.0] = DISCONNECTED;
                             }
                         }
                     }
@@ -371,44 +371,44 @@ void PixelGraph::connections(std::vector<std::vector<int>>& connGraph, cv::Point
                 // check bottom row
                 if (y < 7) {
                     // check bottom
-                    if (connGraph[y + 1.0][x] != 1 && connGraph[y + 1.0][x] != -1) {
+                    if (connGraph[y + 1.0][x] != CONNECTED && connGraph[y + 1.0][x] != INVALID) {
                         if (realY >= graph->size()) {
-                            connGraph[y + 1.0][x] = -1;
+                            connGraph[y + 1.0][x] = INVALID;
                         }
                         else if (graph->at(realY)->at(realX)->bottom != NULL) {
-                            connGraph[y + 1.0][x] = 1;
+                            connGraph[y + 1.0][x] = CONNECTED;
                         }
                         else {
-                            connGraph[y + 1.0][x] = 2;
+                            connGraph[y + 1.0][x] = DISCONNECTED;
                         }
                     }
 
                     // check bottom left
                     if (x > 0) {
-                        if (connGraph[y + 1.0][x - 1.0] != 1 && connGraph[y + 1.0][x - 1.0] != -1) {
+                        if (connGraph[y + 1.0][x - 1.0] != CONNECTED && connGraph[y + 1.0][x - 1.0] != INVALID) {
                             if (realY >= graph->size() || realX <= 0) {
-                                connGraph[y + 1.0][x - 1.0] = -1;
+                                connGraph[y + 1.0][x - 1.0] = INVALID;
                             }
                             else if (graph->at(realY)->at(realX)->bottomLeft != NULL) {
-                                connGraph[y + 1.0][x - 1.0] = 1;
+                                connGraph[y + 1.0][x - 1.0] = CONNECTED;
                             }
                             else {
-                                connGraph[y + 1.0][x - 1.0] = 2;
+                                connGraph[y + 1.0][x - 1.0] = DISCONNECTED;
                             }
                         }
                     }
 
                     // check bottom right
                     if (x < 7) {
-                        if (connGraph[y + 1.0][x + 1.0] != 1 && connGraph[y + 1.0][x + 1.0] != -1) {
+                        if (connGraph[y + 1.0][x + 1.0] != CONNECTED && connGraph[y + 1.0][x + 1.0] != INVALID) {
                             if (realY >= graph->size() || realX >= graph->at(0)->size()) {
-                                connGraph[y + 1.0][x + 1.0] = -1;
+                                connGraph[y + 1.0][x + 1.0] = INVALID;
                             }
                             else if (graph->at(realY)->at(realX)->bottomRight != NULL) {
-                                connGraph[y + 1.0][x + 1.0] = 1;
+                                connGraph[y + 1.0][x + 1.0] = CONNECTED;
                             }
                             else {
-                                connGraph[y + 1.0][x + 1.0] = 2;
+                                connGraph[y + 1.0][x + 1.0] = DISCONNECTED;
                             }
                         }
                     }
@@ -416,30 +416,30 @@ void PixelGraph::connections(std::vector<std::vector<int>>& connGraph, cv::Point
 
                 // check left
                 if (x > 0) {
-                    if (connGraph[y][x - 1.0] != 1 && connGraph[y][x - 1.0] != -1) {
+                    if (connGraph[y][x - 1.0] != CONNECTED && connGraph[y][x - 1.0] != -INVALID) {
                         if (realX <= 0) {
-                            connGraph[y][x - 1.0] = -1;
+                            connGraph[y][x - 1.0] = INVALID;
                         }
                         else if (graph->at(realY)->at(realX)->left != NULL) {
-                            connGraph[y][x - 1.0] = 1;
+                            connGraph[y][x - 1.0] = CONNECTED;
                         }
                         else {
-                            connGraph[y][x - 1.0] = 2;
+                            connGraph[y][x - 1.0] = DISCONNECTED;
                         }
                     }
                 }
 
                 // check right
                 if (x < 7) {
-                    if (connGraph[y][x + 1.0] != 1 && connGraph[y][x + 1.0] != -1) {
+                    if (connGraph[y][x + 1.0] != CONNECTED && connGraph[y][x + 1.0] != INVALID) {
                         if (realX >= graph->at(0)->size()) {
-                            connGraph[y][x + 1.0] = -1;
+                            connGraph[y][x + 1.0] = INVALID;
                         }
                         else if (graph->at(realY)->at(realX)->right != NULL) {
-                            connGraph[y][x + 1.0] = 1;
+                            connGraph[y][x + 1.0] = CONNECTED;
                         }
                         else {
-                            connGraph[y][x + 1.0] = 2;
+                            connGraph[y][x + 1.0] = DISCONNECTED;
                         }
                     }
                 }
@@ -450,19 +450,19 @@ void PixelGraph::connections(std::vector<std::vector<int>>& connGraph, cv::Point
         if (remainingUntested) {
             for (int y = 0; y < 8; y++) {
                 for (int x = 0; x < 8; x++) {
-                    if (connGraph[y][x] != 0) {
+                    if (connGraph[y][x] != UNTESTED) {
                         continue;
                     }
 
                     // uses clamp to quickly check surrounding values.
-                    if (connGraph[std::clamp(y - 1, 0, 7)][std::clamp(x - 1, 0, 7)] == 1 
-                        || connGraph[std::clamp(y-1, 0, 7)][x] == 1
-                        || connGraph[std::clamp(y-1, 0, 7)][std::clamp(x+1, 0, 7)] == 1
-                        || connGraph[y][std::clamp(x-1, 0, 7)] == 1
-                        || connGraph[y][std::clamp(x+1, 0, 7)] == 1
-                        || connGraph[std::clamp(y+1, 0, 7)][std::clamp(x-1, 0, 7)] == 1
-                        || connGraph[std::clamp(y+1, 0, 7)][x] == 1
-                        || connGraph[std::clamp(y+1, 0, 7)][std::clamp(x+1, 0, 7)] == 1)
+                    if (connGraph[std::clamp(y - 1, 0, 7)][std::clamp(x - 1, 0, 7)] == CONNECTED 
+                        || connGraph[std::clamp(y-1, 0, 7)][x] == CONNECTED
+                        || connGraph[std::clamp(y-1, 0, 7)][std::clamp(x+1, 0, 7)] == CONNECTED
+                        || connGraph[y][std::clamp(x-1, 0, 7)] == CONNECTED
+                        || connGraph[y][std::clamp(x+1, 0, 7)] == CONNECTED
+                        || connGraph[std::clamp(y+1, 0, 7)][std::clamp(x-1, 0, 7)] == CONNECTED
+                        || connGraph[std::clamp(y+1, 0, 7)][x] == CONNECTED
+                        || connGraph[std::clamp(y+1, 0, 7)][std::clamp(x+1, 0, 7)] == CONNECTED)
                     {
                         reachableUntested = true;
                         break;

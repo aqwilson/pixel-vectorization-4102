@@ -7,6 +7,8 @@
 class PixelGraph {
 
 public:
+    enum ConnType {CONNECTED, DISCONNECTED, INVALID, UNTESTED};
+
     std::vector<std::vector<Node*>*>* graph;
     cv::Mat* img;
 
@@ -24,7 +26,7 @@ private:
     void runSparseHeuristic(cv::Point, cv::Point2f*);
     void runIslandHeuristic(cv::Point, cv::Point2f*);
 
-    void connections(std::vector<std::vector<int>>&, cv::Point);
+    void connections(std::vector<std::vector<ConnType>>&, cv::Point);
 
     bool comparePixels(Node*, Node*);
     void firstNeighbourhoodPrunePass(Node*);
