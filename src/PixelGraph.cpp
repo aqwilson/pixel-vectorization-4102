@@ -286,12 +286,12 @@ void PixelGraph::runIslandHeuristic(cv::Point topLeft, cv::Point2f* weightVals){
 
     // if there is top left/bottom right valence of 1, then there is an island on this diagonal
     if (calculateValence(topLeft) == 1 || calculateValence(bottomRight) == 1) {
-        weightVals->x = 5.0f; // magic number 5 is from the paper
+        weightVals->x = ISLAND_NUM;
     }
 
     // if there is a top right/bottom left valence of 1, then there is an island on this diagonal
     if (calculateValence(topRight) == 1 || calculateValence(bottomLeft) == 1) {
-        weightVals->y = 5.0f;
+        weightVals->y = ISLAND_NUM;
     }
 }
 

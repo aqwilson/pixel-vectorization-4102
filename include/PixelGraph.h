@@ -8,6 +8,7 @@ class PixelGraph {
 
 public:
     enum ConnType {CONNECTED, DISCONNECTED, INVALID, UNTESTED};
+    const float ISLAND_NUM = 5.0f; // magic number 5 is from the paper
 
     std::vector<std::vector<Node*>*>* graph;
     cv::Mat* img;
