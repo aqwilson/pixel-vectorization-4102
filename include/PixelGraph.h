@@ -24,6 +24,8 @@ private:
     void runSparseHeuristic(cv::Point, cv::Point2f*);
     void runIslandHeuristic(cv::Point, cv::Point2f*);
 
+    void connections(std::vector<std::vector<int>>&, cv::Point);
+
     bool comparePixels(Node*, Node*);
     void firstNeighbourhoodPrunePass(Node*);
     void flatPruning(Node*);
