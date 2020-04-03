@@ -541,19 +541,29 @@ void PixelGraph::calculateFillType(std::vector<std::vector<FillType>>& fills) {
                     fills[y][x] = FillType::DIAGONAL;
                 }
                 else {
-                    // now we need to check for diagonals!
-                    Node* top = (y - 1.0 < 0) ? NULL : graph->at(y - 1.0)->at(x);
-                    Node* bottom = (y + 1.0 >= graph->size()) ? NULL : graph->at(y + 1.0)->at(x);
+                    // now we need to check for diagonals not attached to n!
+                    Node* top = (y - 1.0 < 0 || n->top != NULL) ? NULL : graph->at(y - 1.0)->at(x);
+                    Node* bottom = (y + 1.0 >= graph->size() || n->bottom != NULL) ? NULL : graph->at(y + 1.0)->at(x);
 
+                    // does n have any diagonal or cardinal connections?
                     bool nHasDiagonals = n->bottomLeft != NULL || n->bottomRight != NULL || n->topLeft != NULL || n->topRight != NULL;
+                    bool nHasCardinals = n->top != NULL || n->bottom != NULL || n->left != NULL || n->right != NULL;
+
+                    // are there detached diagonals?
                     bool topDiagonals = top != NULL && (top->bottomLeft != NULL || top->bottomRight != NULL);
                     bool bottomDiagonals = bottom != NULL && (bottom->topLeft != NULL || bottom->topRight != NULL);
                     bool otherDiagonals = topDiagonals || bottomDiagonals;
                     
-                    if (nHasDiagonals || otherDiagonals) {
+                    // diagonal + cardinal, or just cardinals + other diagonals around you
+                    if ((nHasDiagonals && nHasCardinals) || (nHasCardinals && !nHasDiagonals && otherDiagonals)) {
                         fills[y][x] = FillType::NO_CORNER;
                     }
+                    else if (nHasDiagonals && !nHasCardinals) {
+                        // only diagonals, but not in a line
+                        fills[y][x] = FillType::CARD_END; // this seems weird, but it equates to the same pattern
+                    }
                     else {
+                        // other condition
                         fills[y][x] = FillType::FULL;
                     }
                 }
@@ -578,7 +588,17 @@ void PixelGraph::calculateFillType(std::vector<std::vector<FillType>>& fills) {
                     bool bottomDiagonals = bottom != NULL && (bottom->topLeft != NULL || bottom->topRight != NULL);
                     bool otherDiagonals = topDiagonals || bottomDiagonals;
 
-                    if (otherDiagonals) {
+                    // we can also have an elbow in a limited set of valence 3 scenarios, which we'll check for here as well
+                    // I think it's a little more readable to extract the bool logic here instead of just put it all in a big if statement
+                    bool topElbow = n->topLeft != NULL && n->top != NULL && n->topRight != NULL;
+                    bool rightElbow = n->topRight != NULL && n->right != NULL && n->bottomRight != NULL;
+                    bool bottomElbow = n->bottomRight != NULL && n->bottom != NULL && n->bottomLeft != NULL;
+                    bool leftElbow = n->bottomLeft != NULL && n->left != NULL && n->topLeft != NULL;
+                    bool hasElbow = topElbow || rightElbow || leftElbow || bottomElbow;
+
+                    if (valence == 3 && hasElbow) {
+                        fills[y][x] = FillType::CARD_END;
+                    } else if (otherDiagonals) {
                         fills[y][x] = FillType::NO_CORNER;
                     }
                     else {
@@ -752,8 +772,9 @@ void PixelGraph::renderCardEndPixel(cv::Mat& m, cv::Point p) {
 
     Node* n = graph->at(p.y)->at(p.x);
 
-    if (n->top != NULL) {
-        // ending on the bottom
+    // we check for a few different cases here since we may have valence 1, 2, or 3 nodes here.
+    if (n->top != NULL || (n->topLeft != NULL && n->topRight != NULL)) {
+        // connected through the top (and/or elbow through the top)
         cv::Vec3b rightColor = img->at<cv::Vec3b>(cv::Point(p.x + 1, p.y));
         cv::Vec3b bottomColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y + 1));
         cv::Vec3b leftColor = img->at<cv::Vec3b>(cv::Point(p.x - 1, p.y));
@@ -765,8 +786,8 @@ void PixelGraph::renderCardEndPixel(cv::Mat& m, cv::Point p) {
         m.at<cv::Vec3b>(cv::Point(3, 3)) = rightColor;
         m.at<cv::Vec3b>(cv::Point(3, 2)) = rightColor;
     }
-    else if (n->bottom != NULL) {
-        // ending on the top
+    else if (n->bottom != NULL || (n->bottomLeft != NULL && n->bottomRight != NULL)) {
+        // connected through the bottom (and/or elbow through the bottom)
         cv::Vec3b topColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y - 1));
         cv::Vec3b rightColor = img->at<cv::Vec3b>(cv::Point(p.x + 1, p.y));
         cv::Vec3b leftColor = img->at<cv::Vec3b>(cv::Point(p.x - 1, p.y));
@@ -779,8 +800,8 @@ void PixelGraph::renderCardEndPixel(cv::Mat& m, cv::Point p) {
         m.at<cv::Vec3b>(cv::Point(3, 1)) = rightColor;
 
     }
-    else if (n->right != NULL) {
-        // ending on the left
+    else if (n->right != NULL || (n->topRight != NULL && n->bottomRight != NULL)) {
+        // connected through the right (and/or elbow through the right)
         cv::Vec3b topColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y - 1));
         cv::Vec3b bottomColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y + 1));
         cv::Vec3b leftColor = img->at<cv::Vec3b>(cv::Point(p.x - 1, p.y));
@@ -793,8 +814,8 @@ void PixelGraph::renderCardEndPixel(cv::Mat& m, cv::Point p) {
         m.at<cv::Vec3b>(cv::Point(1, 3)) = bottomColor;
 
     }
-    else if (n->left != NULL) {
-        // ending on the right
+    else if (n->left != NULL || (n->topLeft != NULL && n->bottomLeft != NULL)) {
+        // connected through the left (and/or elbow through the left)
         cv::Vec3b topColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y - 1));
         cv::Vec3b rightColor = img->at<cv::Vec3b>(cv::Point(p.x + 1, p.y));
         cv::Vec3b bottomColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y + 1));
