@@ -150,10 +150,10 @@ void PixelGraph::flatPruning(Node* n) {
     }
 
     if (bottomCompare && bottomLeftCompare && leftCompare) {
-if (n->bottomLeft != NULL) {
-    n->bottomLeft->topRight = NULL;
-    n->bottomLeft = NULL;
-}
+        if (n->bottomLeft != NULL) {
+            n->bottomLeft->topRight = NULL;
+            n->bottomLeft = NULL;
+        }
     }
 
 }
@@ -225,86 +225,6 @@ void PixelGraph::runCurveHeuristic(cv::Point topLeftPoint, cv::Point2f* weightVa
 
     if (curveLen2 > curveLen1) {
         weightVals->y = curveLen2 - curveLen1;
-    }
-}
-
-int PixelGraph::GetCurveLength(Node* startingNode1, Node* startingNode2) {
-    
-    //Calculate length of curve from top left to bottom right
-    Node* track1 = startingNode1;
-    Node* track2 = startingNode2;
-
-    Node* track1Prev = startingNode2;
-    Node* track2Prev = startingNode1;
-
-    Node* next;
-
-    //Add one to one of the lengths to account for the initial connection
-    int track1Length = 1;
-    int track2Length = 0;
-
-    while ((calculateValence(track1->pos) == 2) || (calculateValence(track2->pos) == 2)) {
-        if (calculateValence(track1->pos) == 2) {
-            track1Length++;
-            next = FindSecondConnection(track1, track1Prev);
-            track1Prev = track1;
-            track1 = next;
-
-            //We might either hit the other track, or ourself
-            if (track1 == track2 || track1 == startingNode1) {
-                track1Length--;
-                break;
-            }
-        }
-        if (calculateValence(track2->pos) == 2) {
-            track2Length++;
-            next = FindSecondConnection(track2, track2Prev);
-            track2Prev = track2;
-            track2 = next;
-
-            //We might either hit the other track or ourself
-            if (track2 == track1 || track2 == startingNode2) {
-                track2Length--;
-                break;
-            }
-        }
-    }
-
-    return (track1Length + track2Length);
-}
-
-//Finds the second connection of a valence 2 node
-Node* PixelGraph::FindSecondConnection(Node* nodeToCalc, Node* otherConn) {
-    if (calculateValence(nodeToCalc->pos) != 2) {
-        std::cout << "Find second connection only valid for valence 2 nodes\n";
-        return NULL;
-    }
-
-    else {
-        if (nodeToCalc->topLeft && nodeToCalc->topLeft != otherConn) {
-            return nodeToCalc->topLeft;
-        }
-        else if (nodeToCalc->top && nodeToCalc->top != otherConn) {
-            return nodeToCalc->top;
-        }
-        else if (nodeToCalc->topRight && nodeToCalc->topRight != otherConn) {
-            return nodeToCalc->topRight;
-        }
-        else if (nodeToCalc->right && nodeToCalc->right != otherConn) {
-            return nodeToCalc->right;
-        }
-        else if (nodeToCalc->bottomRight && nodeToCalc->bottomRight != otherConn) {
-            return nodeToCalc->bottomRight;
-        }
-        else if (nodeToCalc->bottom && nodeToCalc->bottom != otherConn) {
-            return nodeToCalc->bottom;
-        }
-        else if (nodeToCalc->bottomLeft && nodeToCalc->bottomLeft != otherConn) {
-            return nodeToCalc->bottomLeft;
-        }
-        else {
-            return nodeToCalc->left;
-        }
     }
 }
 
@@ -388,6 +308,86 @@ void PixelGraph::runIslandHeuristic(cv::Point topLeft, cv::Point2f* weightVals){
     // if there is a top right/bottom left valence of 1, then there is an island on this diagonal
     if (calculateValence(topRight) == 1 || calculateValence(bottomLeft) == 1) {
         weightVals->y = ISLAND_NUM;
+    }
+}
+
+int PixelGraph::GetCurveLength(Node* startingNode1, Node* startingNode2) {
+
+    //Calculate length of curve from top left to bottom right
+    Node* track1 = startingNode1;
+    Node* track2 = startingNode2;
+
+    Node* track1Prev = startingNode2;
+    Node* track2Prev = startingNode1;
+
+    Node* next;
+
+    //Add one to one of the lengths to account for the initial connection
+    int track1Length = 1;
+    int track2Length = 0;
+
+    while ((calculateValence(track1->pos) == 2) || (calculateValence(track2->pos) == 2)) {
+        if (calculateValence(track1->pos) == 2) {
+            track1Length++;
+            next = FindSecondConnection(track1, track1Prev);
+            track1Prev = track1;
+            track1 = next;
+
+            //We might either hit the other track, or ourself
+            if (track1 == track2 || track1 == startingNode1) {
+                track1Length--;
+                break;
+            }
+        }
+        if (calculateValence(track2->pos) == 2) {
+            track2Length++;
+            next = FindSecondConnection(track2, track2Prev);
+            track2Prev = track2;
+            track2 = next;
+
+            //We might either hit the other track or ourself
+            if (track2 == track1 || track2 == startingNode2) {
+                track2Length--;
+                break;
+            }
+        }
+    }
+
+    return (track1Length + track2Length);
+}
+
+//Finds the second connection of a valence 2 node
+Node* PixelGraph::FindSecondConnection(Node* nodeToCalc, Node* otherConn) {
+    if (calculateValence(nodeToCalc->pos) != 2) {
+        std::cout << "Find second connection only valid for valence 2 nodes\n";
+        return NULL;
+    }
+
+    else {
+        if (nodeToCalc->topLeft && nodeToCalc->topLeft != otherConn) {
+            return nodeToCalc->topLeft;
+        }
+        else if (nodeToCalc->top && nodeToCalc->top != otherConn) {
+            return nodeToCalc->top;
+        }
+        else if (nodeToCalc->topRight && nodeToCalc->topRight != otherConn) {
+            return nodeToCalc->topRight;
+        }
+        else if (nodeToCalc->right && nodeToCalc->right != otherConn) {
+            return nodeToCalc->right;
+        }
+        else if (nodeToCalc->bottomRight && nodeToCalc->bottomRight != otherConn) {
+            return nodeToCalc->bottomRight;
+        }
+        else if (nodeToCalc->bottom && nodeToCalc->bottom != otherConn) {
+            return nodeToCalc->bottom;
+        }
+        else if (nodeToCalc->bottomLeft && nodeToCalc->bottomLeft != otherConn) {
+            return nodeToCalc->bottomLeft;
+        }
+        else {
+            return nodeToCalc->left;
+        }
     }
 }
 
