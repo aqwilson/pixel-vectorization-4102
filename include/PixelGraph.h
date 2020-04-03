@@ -25,7 +25,7 @@ public:
     void computeVoronoi(cv::Mat*);
 
 private:
-    enum class FillType { FULL, NO_CORNER, DIAGONAL, CARD_END, DIAG_END, NONE };
+    enum class FillType { FULL, NO_CORNER, THREE_CORNER, FOUR_CORNER, DIAGONAL, CARD_END, DIAG_END, NONE };
 
     void runCurveHeuristic(cv::Point, cv::Point2f*);
     void runSparseHeuristic(cv::Point, cv::Point2f*);
@@ -39,10 +39,14 @@ private:
     void flatPruning(Node*);
 
     void renderFullPixel(cv::Mat&, cv::Point);
+    void renderFourDiag(cv::Mat&, cv::Point);
+    void renderThreeDiag(cv::Mat&, cv::Point);
     void renderNoCornerPixel(cv::Mat&, cv::Point);
     void renderDiagonalPixel(cv::Mat&, cv::Point);
     void renderCardEndPixel(cv::Mat&, cv::Point);
     void renderDiagEndPixel(cv::Mat&, cv::Point);
     void renderNonePixel(cv::Mat&, cv::Point);
     void calculateFillType(std::vector<std::vector<FillType>>&);
+    bool hasExternalDiagonals(Node*, int, int);
+    int countExternalDiagonals(Node*, int, int);
 };

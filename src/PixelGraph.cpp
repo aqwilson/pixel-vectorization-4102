@@ -521,6 +521,36 @@ void PixelGraph::calculateFillType(std::vector<std::vector<FillType>>& fills) {
             int valence = calculateValence(cv::Point(x, y));
 
             if (valence == 0) {
+                if (hasExternalDiagonals(n, x, y)) {
+                    int numExt = countExternalDiagonals(n, x, y);
+                    
+                    if (numExt == 1) {
+                        fills[y][x] = FillType::NO_CORNER;
+                    }
+                    else if (numExt == 2) {
+                        Node* top = (y - 1.0 < 0 || n->top != NULL) ? NULL : graph->at(y - 1.0)->at(x);
+                        Node* bottom = (y + 1.0 >= graph->size() || n->bottom != NULL) ? NULL : graph->at(y + 1.0)->at(x);
+
+                        bool tlCorner = top != NULL && top->bottomLeft != NULL;
+                        bool trCorner = top != NULL && top->bottomRight != NULL;
+                        bool blCorner = bottom != NULL && bottom->topLeft != NULL;
+                        bool brCorner = bottom != NULL && bottom->topRight != NULL;
+
+                        if ((tlCorner && brCorner) || (trCorner && blCorner)) {
+                            fills[y][x] = FillType::DIAG_END;
+                        }
+                        else {
+                            fills[y][x] = FillType::CARD_END;
+                        }
+                    }
+                    else if (numExt == 3) {
+                        fills[y][x] = FillType::THREE_CORNER;
+                    }
+                    else {
+                        fills[y][x] = FillType::FOUR_CORNER;
+                    }
+                }
+
                 fills[y][x] = FillType::FULL;
             } else if (valence == 1) {
                 // either diagonal end or cardinal end
@@ -541,18 +571,12 @@ void PixelGraph::calculateFillType(std::vector<std::vector<FillType>>& fills) {
                     fills[y][x] = FillType::DIAGONAL;
                 }
                 else {
-                    // now we need to check for diagonals not attached to n!
-                    Node* top = (y - 1.0 < 0 || n->top != NULL) ? NULL : graph->at(y - 1.0)->at(x);
-                    Node* bottom = (y + 1.0 >= graph->size() || n->bottom != NULL) ? NULL : graph->at(y + 1.0)->at(x);
-
                     // does n have any diagonal or cardinal connections?
                     bool nHasDiagonals = n->bottomLeft != NULL || n->bottomRight != NULL || n->topLeft != NULL || n->topRight != NULL;
                     bool nHasCardinals = n->top != NULL || n->bottom != NULL || n->left != NULL || n->right != NULL;
 
                     // are there detached diagonals?
-                    bool topDiagonals = top != NULL && (top->bottomLeft != NULL || top->bottomRight != NULL);
-                    bool bottomDiagonals = bottom != NULL && (bottom->topLeft != NULL || bottom->topRight != NULL);
-                    bool otherDiagonals = topDiagonals || bottomDiagonals;
+                    bool otherDiagonals = hasExternalDiagonals(n, x, y);
                     
                     // diagonal + cardinal, or just cardinals + other diagonals around you
                     if ((nHasDiagonals && nHasCardinals) || (nHasCardinals && !nHasDiagonals && otherDiagonals)) {
@@ -580,13 +604,7 @@ void PixelGraph::calculateFillType(std::vector<std::vector<FillType>>& fills) {
                 }
                 else {
                     // now we need to check for diagonals that are NOT from this colour!
-                    Node* top = (y - 1.0 < 0 || n->top != NULL) ? NULL : graph->at(y - 1.0)->at(x);
-                    Node* bottom = (y + 1.0 >= graph->size() || n->bottom != NULL) ? NULL : graph->at(y + 1.0)->at(x);
-
-                    //bool nHasDiagonals = n->bottomLeft != NULL || n->bottomRight != NULL || n->topLeft != NULL || n->topRight != NULL;
-                    bool topDiagonals = top != NULL && (top->bottomLeft != NULL || top->bottomRight != NULL);
-                    bool bottomDiagonals = bottom != NULL && (bottom->topLeft != NULL || bottom->topRight != NULL);
-                    bool otherDiagonals = topDiagonals || bottomDiagonals;
+                    bool otherDiagonals = hasExternalDiagonals(n, x, y);
 
                     // we can also have an elbow in a limited set of valence 3 scenarios, which we'll check for here as well
                     // I think it's a little more readable to extract the bool logic here instead of just put it all in a big if statement
@@ -643,6 +661,12 @@ void PixelGraph::computeVoronoi(cv::Mat* m) {
                 break;
             case (FillType::NO_CORNER):
                 renderNoCornerPixel(temp, p);
+                break;
+            case (FillType::FOUR_CORNER):
+                renderFourDiag(temp, p);
+                break;
+            case(FillType::THREE_CORNER):
+                renderThreeDiag(temp, p);
                 break;
             default:
                 renderNonePixel(temp, p);
@@ -881,4 +905,121 @@ void PixelGraph::renderDiagEndPixel(cv::Mat& m, cv::Point p) {
         m.at<cv::Vec3b>(cv::Point(3, 3)) = bottomColor;
         m.at<cv::Vec3b>(cv::Point(3, 2)) = bottomColor;
     }
+}
+
+void PixelGraph::renderFourDiag(cv::Mat& m, cv::Point p) {
+    // flood with colour first, and then figure out which corners to change
+    cv::Vec3b color = img->at<cv::Vec3b>(p);
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            m.at<cv::Vec3b>(cv::Point(x, y)) = color;
+        }
+    }
+
+    Node* n = graph->at(p.y)->at(p.x);
+
+    cv::Vec3b topColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y - 1));
+    cv::Vec3b rightColor = img->at<cv::Vec3b>(cv::Point(p.x + 1, p.y));
+    cv::Vec3b bottomColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y + 1));
+    cv::Vec3b leftColor = img->at<cv::Vec3b>(cv::Point(p.x - 1, p.y));
+
+    m.at<cv::Vec3b>(cv::Point(0, 0)) = topColor;
+    m.at<cv::Vec3b>(cv::Point(3, 0)) = rightColor;
+    m.at<cv::Vec3b>(cv::Point(3, 3)) = bottomColor;
+    m.at<cv::Vec3b>(cv::Point(0, 3)) = leftColor;
+}
+
+void PixelGraph::renderThreeDiag(cv::Mat& m, cv::Point p) {
+    // flood with colour first, and then figure out which corners to change
+    cv::Vec3b color = img->at<cv::Vec3b>(p);
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            m.at<cv::Vec3b>(cv::Point(x, y)) = color;
+        }
+    }
+
+    Node* n = graph->at(p.y)->at(p.x);
+    Node* top = (p.y - 1.0 < 0 || n->top != NULL) ? NULL : graph->at(p.y - 1.0)->at(p.x);
+    Node* bottom = (p.y + 1.0 >= graph->size() || n->bottom != NULL) ? NULL : graph->at(p.y + 1.0)->at(p.x);
+
+    cv::Vec3b topColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y - 1));
+    cv::Vec3b rightColor = img->at<cv::Vec3b>(cv::Point(p.x + 1, p.y));
+    cv::Vec3b bottomColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y + 1));
+    cv::Vec3b leftColor = img->at<cv::Vec3b>(cv::Point(p.x - 1, p.y));
+
+    if (top != NULL && top->bottomLeft == NULL) {
+        // topLeft corner filled
+        m.at<cv::Vec3b>(cv::Point(2, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(3, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(3, 1)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(3, 2)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(3, 3)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(2, 3)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(1, 3)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(0, 3)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(0, 2)) = bottomColor;
+    }
+    else if (top != NULL && top->bottomRight == NULL) {
+        // topRight corner filled
+        m.at<cv::Vec3b>(cv::Point(3, 2)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(3, 3)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(2, 3)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(1, 3)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(0, 3)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(0, 2)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(0, 1)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(0, 0)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(1, 0)) = leftColor;
+    }
+    else if (bottom != NULL && bottom->topRight == NULL) {
+        // bottomRight corner filled
+        m.at<cv::Vec3b>(cv::Point(1, 3)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(0, 3)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(0, 2)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(0, 1)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(0, 0)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(1, 0)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(2, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(3, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(3, 1)) = topColor;
+    }
+    else if (bottom != NULL && bottom->topLeft == NULL) {
+        // bottomLeft corner filled
+        m.at<cv::Vec3b>(cv::Point(0, 1)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(0, 0)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(1, 0)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(2, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(3, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(3, 1)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(3, 2)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(3, 3)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(2, 3)) = rightColor;
+    }
+}
+
+bool PixelGraph::hasExternalDiagonals(Node* n, int x, int y) {
+    // now we need to check for diagonals not attached to n!
+    Node* top = (y - 1.0 < 0 || n->top != NULL) ? NULL : graph->at(y - 1.0)->at(x);
+    Node* bottom = (y + 1.0 >= graph->size() || n->bottom != NULL) ? NULL : graph->at(y + 1.0)->at(x);
+
+    // are there detached diagonals?
+    bool topDiagonals = top != NULL && (top->bottomLeft != NULL || top->bottomRight != NULL);
+    bool bottomDiagonals = bottom != NULL && (bottom->topLeft != NULL || bottom->topRight != NULL);
+    bool otherDiagonals = topDiagonals || bottomDiagonals;
+    
+    return otherDiagonals;
+}
+
+int PixelGraph::countExternalDiagonals(Node* n, int x, int y) {
+    Node* top = (y - 1.0 < 0 || n->top != NULL) ? NULL : graph->at(y - 1.0)->at(x);
+    Node* bottom = (y + 1.0 >= graph->size() || n->bottom != NULL) ? NULL : graph->at(y + 1.0)->at(x);
+
+    int diagonals = 0;
+
+    if (top != NULL && top->bottomLeft != NULL) diagonals++;
+    if (top != NULL && top->bottomRight != NULL) diagonals++;
+    if (bottom != NULL && bottom->topLeft != NULL) diagonals++;
+    if (bottom != NULL && bottom->topRight != NULL) diagonals++;
+
+    return diagonals;
 }
