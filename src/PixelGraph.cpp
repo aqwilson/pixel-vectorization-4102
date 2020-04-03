@@ -185,7 +185,7 @@ void PixelGraph::runHeuristics() {
             if (topLeftNode->bottomRight != NULL && topRightNode->bottomLeft != NULL) {
                 cv::Point2f curveWeights, sparseWeights, islandWeights;
 
-                runCurveHeuristic(cv::Point2f(j, i), topLeftNode, topRightNode, bottomLeftNode, bottomRightNode, &curveWeights);
+                runCurveHeuristic(cv::Point2f(j, i), &curveWeights);
                 runSparseHeuristic(cv::Point2f(j, i), &sparseWeights);
                 runIslandHeuristic(cv::Point2f(j, i), &islandWeights);
 
@@ -206,12 +206,18 @@ void PixelGraph::runHeuristics() {
     }
 }
 
-void PixelGraph::runCurveHeuristic(cv::Point topLeftPoint, Node* tlNode, Node* trNode, Node* blNode, Node* brNode, cv::Point2f* weightVals) {
+void PixelGraph::runCurveHeuristic(cv::Point topLeftPoint, cv::Point2f* weightVals) {
+    Node* topLeftNode = graph->at(topLeftPoint.y)->at(topLeftPoint.x);
+    Node* topRightNode = graph->at(topLeftPoint.y)->at(topLeftPoint.x + 1.0);
+    Node* bottomLeftNode = graph->at(topLeftPoint.y + 1.0)->at(topLeftPoint.x);
+    Node* bottomRightNode = graph->at(topLeftPoint.y + 1.0)->at(topLeftPoint.x + 1.0);
+
+
     weightVals->x = 0.0f;
     weightVals->y = 0.0f;
 
-    int curveLen1 = GetCurveLength(tlNode, brNode);
-    int curveLen2 = GetCurveLength(trNode, blNode);
+    int curveLen1 = GetCurveLength(topLeftNode, bottomRightNode);
+    int curveLen2 = GetCurveLength(topRightNode, bottomLeftNode);
 
     if (curveLen1 > curveLen2) {
         weightVals->x = curveLen1 - curveLen2;
