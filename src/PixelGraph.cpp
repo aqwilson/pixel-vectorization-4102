@@ -824,7 +824,7 @@ void PixelGraph::renderDiagEndPixel(cv::Mat& m, cv::Point p) {
     cv::Vec3b bottomColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y + 1));
     cv::Vec3b leftColor = img->at<cv::Vec3b>(cv::Point(p.x - 1, p.y));
 
-    if (n->topLeft != NULL || n->bottomRight != NULL) {
+    if (n->bottomRight != NULL) {
         // this diagonal goes \  //
         m.at<cv::Vec3b>(cv::Point(2, 0)) = topColor;
         m.at<cv::Vec3b>(cv::Point(3, 0)) = topColor;
@@ -833,13 +833,31 @@ void PixelGraph::renderDiagEndPixel(cv::Mat& m, cv::Point p) {
         m.at<cv::Vec3b>(cv::Point(1, 3)) = leftColor;
         m.at<cv::Vec3b>(cv::Point(0, 2)) = leftColor;
     }
-    else if (n->topRight != NULL || n->bottomLeft != NULL) {
+    else if (n->bottomLeft != NULL) {
         // this diagonal goes /
-        m.at<cv::Vec3b>(cv::Point(1, 0)) = leftColor;
-        m.at<cv::Vec3b>(cv::Point(0, 0)) = leftColor;
-        m.at<cv::Vec3b>(cv::Point(0, 1)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(1, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(0, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(0, 1)) = topColor;
         m.at<cv::Vec3b>(cv::Point(2, 3)) = rightColor;
         m.at<cv::Vec3b>(cv::Point(3, 3)) = rightColor;
         m.at<cv::Vec3b>(cv::Point(3, 2)) = rightColor;
+    }
+    else if (n->topLeft != NULL) {
+        // this one goes \ //
+        m.at<cv::Vec3b>(cv::Point(2, 0)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(3, 0)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(3, 1)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(0, 3)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(1, 3)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(0, 2)) = bottomColor;
+    }
+    else if (n->topRight != NULL) {
+        // this one goes /
+        m.at<cv::Vec3b>(cv::Point(1, 0)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(0, 0)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(0, 1)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(2, 3)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(3, 3)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(3, 2)) = bottomColor;
     }
 }
