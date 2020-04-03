@@ -8,7 +8,6 @@ class PixelGraph {
 
 public:
     enum ConnType {CONNECTED, DISCONNECTED, INVALID, UNTESTED};
-    enum CurveDirection {UPLEFT, UPRIGHT, DOWNLEFT, DOWNRIGHT};
 
     const float ISLAND_NUM = 5.0f; // magic number 5 is from the paper
 
