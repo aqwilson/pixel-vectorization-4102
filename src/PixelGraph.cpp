@@ -150,10 +150,10 @@ void PixelGraph::flatPruning(Node* n) {
     }
 
     if (bottomCompare && bottomLeftCompare && leftCompare) {
-        if (n->bottomLeft != NULL) {
-            n->bottomLeft->topRight = NULL;
-            n->bottomLeft = NULL;
-        }
+if (n->bottomLeft != NULL) {
+    n->bottomLeft->topRight = NULL;
+    n->bottomLeft = NULL;
+}
     }
 
 }
@@ -161,7 +161,7 @@ void PixelGraph::flatPruning(Node* n) {
 void PixelGraph::brutePrune() {
     // break up based on colour
     for (int i = 0; i < graph->size(); i++) {
-        for (int j = 0; j < graph->at(i)->size(); j ++) {
+        for (int j = 0; j < graph->at(i)->size(); j++) {
             Node* n = graph->at(i)->at(j);
 
             firstNeighbourhoodPrunePass(n);
@@ -172,9 +172,9 @@ void PixelGraph::brutePrune() {
 
 void PixelGraph::runHeuristics() {
     // re-add based on other stuff
-    
-    for (int i = 0; i < img->rows - 1; i++){
-        for (int j = 0; j < img->cols - 1; j++){
+
+    for (int i = 0; i < img->rows - 1; i++) {
+        for (int j = 0; j < img->cols - 1; j++) {
             //This will be the top left of our 2 x 2 region, and we should never go out of bounds because of the loop max
             Node* topLeftNode = graph->at(i)->at(j);
             Node* topRightNode = graph->at(i)->at(j + 1.0);
@@ -185,7 +185,7 @@ void PixelGraph::runHeuristics() {
             if (topLeftNode->bottomRight != NULL && topRightNode->bottomLeft != NULL) {
                 cv::Point2f curveWeights, sparseWeights, islandWeights;
 
-                runCurveHeuristic(cv::Point2f(j, i), &curveWeights);
+                runCurveHeuristic(cv::Point2f(j, i), topLeftNode, topRightNode, bottomLeftNode, bottomRightNode, &curveWeights);
                 runSparseHeuristic(cv::Point2f(j, i), &sparseWeights);
                 runIslandHeuristic(cv::Point2f(j, i), &islandWeights);
 
@@ -202,14 +202,104 @@ void PixelGraph::runHeuristics() {
                     bottomRightNode->topLeft = NULL;
                 }
             }
-		}
-	}
-
+        }
+    }
 }
 
-void PixelGraph::runCurveHeuristic(cv::Point topLeft, cv::Point2f* weightVals){
+void PixelGraph::runCurveHeuristic(cv::Point topLeftPoint, Node* tlNode, Node* trNode, Node* blNode, Node* brNode, cv::Point2f* weightVals) {
     weightVals->x = 0.0f;
     weightVals->y = 0.0f;
+
+    int curveLen1 = GetCurveLength(tlNode, brNode);
+    int curveLen2 = GetCurveLength(trNode, blNode);
+
+    if (curveLen1 > curveLen2) {
+        weightVals->x = curveLen1 - curveLen2;
+    }
+
+    if (curveLen2 > curveLen1) {
+        weightVals->y = curveLen2 - curveLen1;
+    }
+}
+
+int PixelGraph::GetCurveLength(Node* startingNode1, Node* startingNode2) {
+    
+    //Calculate length of curve from top left to bottom right
+    Node* track1 = startingNode1;
+    Node* track2 = startingNode2;
+
+    Node* track1Prev = startingNode2;
+    Node* track2Prev = startingNode1;
+
+    Node* next;
+
+    //Add one to one of the lengths to account for the initial connection
+    int track1Length = 1;
+    int track2Length = 0;
+
+    while ((calculateValence(track1->pos) == 2) || (calculateValence(track2->pos) == 2)) {
+        if (calculateValence(track1->pos) == 2) {
+            track1Length++;
+            next = FindSecondConnection(track1, track1Prev);
+            track1Prev = track1;
+            track1 = next;
+
+            //We might either hit the other track, or ourself
+            if (track1 == track2 || track1 == startingNode1) {
+                track1Length--;
+                break;
+            }
+        }
+        if (calculateValence(track2->pos) == 2) {
+            track2Length++;
+            next = FindSecondConnection(track2, track2Prev);
+            track2Prev = track2;
+            track2 = next;
+
+            //We might either hit the other track or ourself
+            if (track2 == track1 || track2 == startingNode2) {
+                track2Length--;
+                break;
+            }
+        }
+    }
+
+    return (track1Length + track2Length);
+}
+
+//Finds the second connection of a valence 2 node
+Node* PixelGraph::FindSecondConnection(Node* nodeToCalc, Node* otherConn) {
+    if (calculateValence(nodeToCalc->pos) != 2) {
+        std::cout << "Find second connection only valid for valence 2 nodes\n";
+        return NULL;
+    }
+
+    else {
+        if (nodeToCalc->topLeft && nodeToCalc->topLeft != otherConn) {
+            return nodeToCalc->topLeft;
+        }
+        else if (nodeToCalc->top && nodeToCalc->top != otherConn) {
+            return nodeToCalc->top;
+        }
+        else if (nodeToCalc->topRight && nodeToCalc->topRight != otherConn) {
+            return nodeToCalc->topRight;
+        }
+        else if (nodeToCalc->right && nodeToCalc->right != otherConn) {
+            return nodeToCalc->right;
+        }
+        else if (nodeToCalc->bottomRight && nodeToCalc->bottomRight != otherConn) {
+            return nodeToCalc->bottomRight;
+        }
+        else if (nodeToCalc->bottom && nodeToCalc->bottom != otherConn) {
+            return nodeToCalc->bottom;
+        }
+        else if (nodeToCalc->bottomLeft && nodeToCalc->bottomLeft != otherConn) {
+            return nodeToCalc->bottomLeft;
+        }
+        else {
+            return nodeToCalc->left;
+        }
+    }
 }
 
 void PixelGraph::runSparseHeuristic(cv::Point topLeft, cv::Point2f* weightVals){
@@ -294,7 +384,6 @@ void PixelGraph::runIslandHeuristic(cv::Point topLeft, cv::Point2f* weightVals){
         weightVals->y = ISLAND_NUM;
     }
 }
-
 
 // create a component-based connection graph to quickly count number of nodes connected.
 void PixelGraph::connections(std::vector<std::vector<ConnType>>& connGraph, cv::Point topLeft) {

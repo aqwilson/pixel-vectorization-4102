@@ -8,6 +8,8 @@ class PixelGraph {
 
 public:
     enum ConnType {CONNECTED, DISCONNECTED, INVALID, UNTESTED};
+    enum CurveDirection {UPLEFT, UPRIGHT, DOWNLEFT, DOWNRIGHT};
+
     const float ISLAND_NUM = 5.0f; // magic number 5 is from the paper
 
     std::vector<std::vector<Node*>*>* graph;
@@ -30,6 +32,9 @@ private:
     void runCurveHeuristic(cv::Point, cv::Point2f*);
     void runSparseHeuristic(cv::Point, cv::Point2f*);
     void runIslandHeuristic(cv::Point, cv::Point2f*);
+
+    int GetCurveLength(Node*, Node*);
+    Node* FindSecondConnection(Node*, Node*);
 
     void connections(std::vector<std::vector<ConnType>>&, cv::Point);
     int calculateValence(cv::Point);
