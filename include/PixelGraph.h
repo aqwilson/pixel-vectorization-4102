@@ -22,7 +22,11 @@ public:
     void brutePrune();
     void runHeuristics();
 
+    void computeVoronoi(cv::Mat*);
+
 private:
+    enum class FillType { FULL, NO_CORNER, DIAGONAL, CARD_END, DIAG_END, NONE };
+
     void runCurveHeuristic(cv::Point, cv::Point2f*);
     void runSparseHeuristic(cv::Point, cv::Point2f*);
     void runIslandHeuristic(cv::Point, cv::Point2f*);
@@ -33,4 +37,12 @@ private:
     bool comparePixels(Node*, Node*);
     void firstNeighbourhoodPrunePass(Node*);
     void flatPruning(Node*);
+
+    void renderFullPixel(cv::Mat&, cv::Point);
+    void renderNoCornerPixel(cv::Mat&, cv::Point);
+    void renderDiagonalPixel(cv::Mat&, cv::Point);
+    void renderCardEndPixel(cv::Mat&, cv::Point);
+    void renderDiagEndPixel(cv::Mat&, cv::Point);
+    void renderNonePixel(cv::Mat&, cv::Point);
+    void calculateFillType(std::vector<std::vector<FillType>>&);
 };

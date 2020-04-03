@@ -4,6 +4,8 @@
 #include <opencv2/core.hpp>
 #include "opencv2/highgui/highgui.hpp"
 
+#include <string>
+
 #include "GenerateSvg.h"
 #include "PixelGraph.h"
 
@@ -15,7 +17,7 @@ int pixelToVector() {
     cv::namedWindow(windowName, CV_WINDOW_AUTOSIZE);
 
     // Load the image
-    cv::Mat src = cv::imread("./input/Cactuar_Cleaned.png");
+    cv::Mat src = cv::imread("./input/Watt_Original.png");
 
     PixelGraph* p = new PixelGraph(&src);
 
@@ -23,11 +25,17 @@ int pixelToVector() {
     p->brutePrune();
     p->runHeuristics();
 
+    cv::Size s = cv::Size(src.cols * 4, src.rows * 4);
+    cv::Mat* voronoi = new cv::Mat(s, src.type());
+
+    p->computeVoronoi(voronoi);
+    cv::imwrite("voronoi.png", *voronoi);
+
     generateSvg(src, p, "bitmap_to_svg.svg");
 
     // Show the image
-    //cv::imshow(windowName, src);
-    //cv::waitKey(0);
+    // cv::imshow(windowName, src);
+    // cv::waitKey(0);
 
     delete p;
     return 0;

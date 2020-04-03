@@ -510,3 +510,336 @@ int PixelGraph::calculateValence(cv::Point p) {
 
     return connections;
 }
+
+void PixelGraph::calculateFillType(std::vector<std::vector<FillType>>& fills) {
+    // iterate over the graph. We will be considering 3x3 sections
+    for (int y = 0; y < graph->size(); y++) {
+        for (int x = 0; x < graph->at(0)->size(); x++) {
+            fills[y][x] = FillType::NONE;
+
+            Node* n = graph->at(y)->at(x);
+            int valence = calculateValence(cv::Point(x, y));
+
+            if (valence == 0) {
+                fills[y][x] = FillType::FULL;
+            } else if (valence == 1) {
+                // either diagonal end or cardinal end
+                if (n->top != NULL || n->left != NULL || n->right != NULL || n->bottom != NULL) {
+                    fills[y][x] = FillType::CARD_END;
+                }
+                else {
+                    fills[y][x] = FillType::DIAG_END;
+                }
+            }
+            else if (valence == 2) {
+                if ((n->top != NULL && n->bottom != NULL) || (n->left != NULL && n->right != NULL)) {
+                    // straight line through cardinals
+                    fills[y][x] = FillType::FULL;
+                }
+                else if ((n->topLeft != NULL && n->bottomRight != NULL) || (n->topRight != NULL && n->bottomLeft != NULL)) {
+                    // true diagonal
+                    fills[y][x] = FillType::DIAGONAL;
+                }
+                else {
+                    // now we need to check for diagonals!
+                    Node* top = (y - 1.0 < 0) ? NULL : graph->at(y - 1.0)->at(x);
+                    Node* bottom = (y + 1.0 >= graph->size()) ? NULL : graph->at(y + 1.0)->at(x);
+
+                    bool nHasDiagonals = n->bottomLeft != NULL || n->bottomRight != NULL || n->topLeft != NULL || n->topRight != NULL;
+                    bool topDiagonals = top != NULL && (top->bottomLeft != NULL || top->bottomRight != NULL);
+                    bool bottomDiagonals = bottom != NULL && (bottom->topLeft != NULL || bottom->topRight != NULL);
+                    bool otherDiagonals = topDiagonals || bottomDiagonals;
+                    
+                    if (nHasDiagonals || otherDiagonals) {
+                        fills[y][x] = FillType::NO_CORNER;
+                    }
+                    else {
+                        fills[y][x] = FillType::FULL;
+                    }
+                }
+            }
+            else {
+                // valence 3+ all have very similar rules (2 has some special cases, so we handle it separately)
+                if ((n->top != NULL && n->bottom != NULL) || (n->left != NULL && n->right != NULL)) {
+                    // straight line through cardinals
+                    fills[y][x] = FillType::FULL;
+                }
+                else if ((n->topLeft != NULL && n->bottomRight != NULL) || (n->topRight != NULL && n->bottomLeft != NULL)) {
+                    // true diagonal
+                    fills[y][x] = FillType::NO_CORNER;
+                }
+                else {
+                    // now we need to check for diagonals that are NOT from this colour!
+                    Node* top = (y - 1.0 < 0 || n->top != NULL) ? NULL : graph->at(y - 1.0)->at(x);
+                    Node* bottom = (y + 1.0 >= graph->size() || n->bottom != NULL) ? NULL : graph->at(y + 1.0)->at(x);
+
+                    //bool nHasDiagonals = n->bottomLeft != NULL || n->bottomRight != NULL || n->topLeft != NULL || n->topRight != NULL;
+                    bool topDiagonals = top != NULL && (top->bottomLeft != NULL || top->bottomRight != NULL);
+                    bool bottomDiagonals = bottom != NULL && (bottom->topLeft != NULL || bottom->topRight != NULL);
+                    bool otherDiagonals = topDiagonals || bottomDiagonals;
+
+                    if (otherDiagonals) {
+                        fills[y][x] = FillType::NO_CORNER;
+                    }
+                    else {
+                        fills[y][x] = FillType::FULL;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void PixelGraph::computeVoronoi(cv::Mat* m) {
+    std::vector<std::vector<FillType>> fills;
+
+    for (int y = 0; y < graph->size(); y++) {
+        std::vector<FillType> f;
+        for (int x = 0; x < graph->at(0)->size(); x++) {
+            f.push_back(FillType::NONE);
+        }
+        fills.push_back(f);
+    }
+
+    calculateFillType(fills);
+
+    for (int y = 0; y < graph->size(); y++) {
+        for (int x = 0; x < graph->at(0)->size(); x++) {
+            cv::Mat temp = cv::Mat(4, 4, img->type());
+            cv::Point p = cv::Point(x, y);
+
+            switch (fills[y][x]) {
+            case(FillType::CARD_END):
+                renderCardEndPixel(temp, p);
+                break;
+            case (FillType::DIAGONAL):
+                renderDiagonalPixel(temp, p);
+                break;
+            case (FillType::DIAG_END):
+                renderDiagEndPixel(temp, p);
+                break;
+            case (FillType::FULL):
+                renderFullPixel(temp, p);
+                break;
+            case (FillType::NO_CORNER):
+                renderNoCornerPixel(temp, p);
+                break;
+            default:
+                renderNonePixel(temp, p);
+            }
+
+            for (int b = 0; b < 4; b++) {
+                for (int a = 0; a < 4; a++) {
+                    cv::Point mPt = cv::Point(x * 4 + a, y * 4 + b);
+                    cv::Point tPt = cv::Point(a, b);
+                    m->at<cv::Vec3b>(mPt) = temp.at<cv::Vec3b>(tPt);
+                }
+            }
+        }
+    }
+}
+
+void PixelGraph::renderFullPixel(cv::Mat& m, cv::Point p) {
+    // filling with colour
+    cv::Vec3b color = img->at<cv::Vec3b>(p);
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            m.at<cv::Vec3b>(cv::Point(x, y)) = color;
+        }
+    }
+}
+
+void PixelGraph::renderNoCornerPixel(cv::Mat& m, cv::Point p) {
+    // flood with colour first, and then figure out which corner to change
+    cv::Vec3b color = img->at<cv::Vec3b>(p);
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            m.at<cv::Vec3b>(cv::Point(x, y)) = color;
+        }
+    }
+
+    Node* n = graph->at(p.y)->at(p.x);
+    Node* top = (p.y - 1 < 0 || n->top != NULL) ? NULL : graph->at(p.y - 1)->at(p.x);
+    Node* bottom = (p.y + 1 > graph->size() || n->bottom != NULL) ? NULL : graph->at(p.y + 1)->at(p.x);
+
+    if (top != NULL && top->bottomRight != NULL) {
+        // topRight corner
+        cv::Vec3b topColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y - 1));
+        cv::Vec3b rightColor = img->at<cv::Vec3b>(cv::Point(p.x + 1, p.y));
+        m.at<cv::Vec3b>(cv::Point(2, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(3, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(3, 1)) = rightColor;
+    }
+    else if (top != NULL && top->bottomLeft != NULL) {
+        // topleft corner
+        cv::Vec3b topColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y - 1));
+        cv::Vec3b leftColor = img->at<cv::Vec3b>(cv::Point(p.x - 1, p.y));
+        m.at<cv::Vec3b>(cv::Point(0, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(1, 0)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(0, 1)) = leftColor;
+    }
+    else if (bottom != NULL && bottom->topRight != NULL) {
+        // bottomRight corner
+        cv::Vec3b bottomColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y + 1));
+        cv::Vec3b rightColor = img->at<cv::Vec3b>(cv::Point(p.x + 1, p.y));
+        m.at<cv::Vec3b>(cv::Point(3, 2)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(3, 3)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(2, 3)) = rightColor;
+    }
+    else if (bottom != NULL && bottom->topLeft != NULL) {
+        // bottomLeft corner - we're explicitly checking this to avoid unexpected data
+        cv::Vec3b bottomColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y + 1));
+        cv::Vec3b leftColor = img->at<cv::Vec3b>(cv::Point(p.x - 1, p.y));
+        m.at<cv::Vec3b>(cv::Point(0, 3)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(1, 3)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(0, 2)) = leftColor;
+    }
+}
+
+void PixelGraph::renderNonePixel(cv::Mat& m, cv::Point p) {
+    // flood of red for debugging
+    cv::Vec3b color = cv::Vec3b(1.0f, 0.0f, 0.0f);
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            m.at<cv::Vec3b>(cv::Point(x, y)) = color;
+        }
+    }
+}
+
+void PixelGraph::renderDiagonalPixel(cv::Mat& m, cv::Point p) {
+    // flood with colour first, and then figure out which corners to change
+    cv::Vec3b color = img->at<cv::Vec3b>(p);
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            m.at<cv::Vec3b>(cv::Point(x, y)) = color;
+        }
+    }
+
+    Node* n = graph->at(p.y)->at(p.x);
+
+    cv::Vec3b topColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y - 1));
+    cv::Vec3b rightColor = img->at<cv::Vec3b>(cv::Point(p.x + 1, p.y));
+    cv::Vec3b bottomColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y + 1));
+    cv::Vec3b leftColor = img->at<cv::Vec3b>(cv::Point(p.x - 1, p.y));
+
+    if (n->topLeft != NULL && n->bottomRight != NULL) {
+        // this diagonal goes \  //
+        m.at<cv::Vec3b>(cv::Point(2, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(3, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(3, 1)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(0, 3)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(1, 3)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(0, 2)) = leftColor;
+    }
+    else if (n->topRight != NULL && n->bottomLeft != NULL) {
+        // this diagonal goes /
+        m.at<cv::Vec3b>(cv::Point(1, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(0, 0)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(0, 1)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(2, 3)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(3, 3)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(2, 3)) = rightColor;
+    }
+}
+
+void PixelGraph::renderCardEndPixel(cv::Mat& m, cv::Point p) {
+    cv::Vec3b color = img->at<cv::Vec3b>(p);
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            m.at<cv::Vec3b>(cv::Point(x, y)) = color;
+        }
+    }
+
+    Node* n = graph->at(p.y)->at(p.x);
+
+    if (n->top != NULL) {
+        // ending on the bottom
+        cv::Vec3b rightColor = img->at<cv::Vec3b>(cv::Point(p.x + 1, p.y));
+        cv::Vec3b bottomColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y + 1));
+        cv::Vec3b leftColor = img->at<cv::Vec3b>(cv::Point(p.x - 1, p.y));
+
+        m.at<cv::Vec3b>(cv::Point(0, 2)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(0, 3)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(1, 3)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(2, 3)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(3, 3)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(3, 2)) = rightColor;
+    }
+    else if (n->bottom != NULL) {
+        // ending on the top
+        cv::Vec3b topColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y - 1));
+        cv::Vec3b rightColor = img->at<cv::Vec3b>(cv::Point(p.x + 1, p.y));
+        cv::Vec3b leftColor = img->at<cv::Vec3b>(cv::Point(p.x - 1, p.y));
+
+        m.at<cv::Vec3b>(cv::Point(0, 0)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(0, 1)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(1, 0)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(2, 0)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(3, 0)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(3, 1)) = rightColor;
+
+    }
+    else if (n->right != NULL) {
+        // ending on the left
+        cv::Vec3b topColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y - 1));
+        cv::Vec3b bottomColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y + 1));
+        cv::Vec3b leftColor = img->at<cv::Vec3b>(cv::Point(p.x - 1, p.y));
+
+        m.at<cv::Vec3b>(cv::Point(1, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(0, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(0, 1)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(0, 2)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(0, 3)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(1, 3)) = bottomColor;
+
+    }
+    else if (n->left != NULL) {
+        // ending on the right
+        cv::Vec3b topColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y - 1));
+        cv::Vec3b rightColor = img->at<cv::Vec3b>(cv::Point(p.x + 1, p.y));
+        cv::Vec3b bottomColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y + 1));
+
+        m.at<cv::Vec3b>(cv::Point(2, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(3, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(3, 1)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(3, 2)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(3, 3)) = bottomColor;
+        m.at<cv::Vec3b>(cv::Point(2, 3)) = bottomColor;
+    }
+}
+
+void PixelGraph::renderDiagEndPixel(cv::Mat& m, cv::Point p) {
+    // flood with colour first, and then figure out which corners to change
+    cv::Vec3b color = img->at<cv::Vec3b>(p);
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            m.at<cv::Vec3b>(cv::Point(x, y)) = color;
+        }
+    }
+
+    Node* n = graph->at(p.y)->at(p.x);
+
+    cv::Vec3b topColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y - 1));
+    cv::Vec3b rightColor = img->at<cv::Vec3b>(cv::Point(p.x + 1, p.y));
+    cv::Vec3b bottomColor = img->at<cv::Vec3b>(cv::Point(p.x, p.y + 1));
+    cv::Vec3b leftColor = img->at<cv::Vec3b>(cv::Point(p.x - 1, p.y));
+
+    if (n->topLeft != NULL || n->bottomRight != NULL) {
+        // this diagonal goes \  //
+        m.at<cv::Vec3b>(cv::Point(2, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(3, 0)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(3, 1)) = topColor;
+        m.at<cv::Vec3b>(cv::Point(0, 3)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(1, 3)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(0, 2)) = leftColor;
+    }
+    else if (n->topRight != NULL || n->bottomLeft != NULL) {
+        // this diagonal goes /
+        m.at<cv::Vec3b>(cv::Point(1, 0)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(0, 0)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(0, 1)) = leftColor;
+        m.at<cv::Vec3b>(cv::Point(2, 3)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(3, 3)) = rightColor;
+        m.at<cv::Vec3b>(cv::Point(3, 2)) = rightColor;
+    }
+}
