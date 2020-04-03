@@ -26,10 +26,14 @@ int pixelToVector() {
     p->runHeuristics();
 
     cv::Size s = cv::Size(src.cols * 4, src.rows * 4);
+    cv::Size s2 = cv::Size(src.cols * 3, src.rows * 3);
     cv::Mat* voronoi = new cv::Mat(s, src.type());
+    cv::Mat* voronoi2 = new cv::Mat(s2, src.type());
 
     p->computeVoronoi(voronoi);
+    p->computeVoronoi2(voronoi2);
     cv::imwrite("voronoi.png", *voronoi);
+    cv::imwrite("voronoi2.png", *voronoi2);
 
     generateSvg(src, p, "bitmap_to_svg.svg");
 

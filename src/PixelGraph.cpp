@@ -1118,3 +1118,47 @@ int PixelGraph::countExternalDiagonals(Node* n, int x, int y) {
 
     return diagonals;
 }
+
+void PixelGraph::computeVoronoi2(cv::Mat* m) {
+    for (int y = 0; y < graph->size(); y++) {
+        for (int x = 0; x < graph->at(0)->size(); x++) {
+            cv::Mat temp = cv::Mat(3, 3, img->type());
+            cv::Point p = cv::Point(x, y);
+
+            // flood with colour first, and then figure out which corners to change
+            cv::Vec3b color = img->at<cv::Vec3b>(p);
+            for (int sub_y = 0; sub_y < 3; sub_y++) {
+                for (int sub_x = 0; sub_x < 3; sub_x++) {
+                    temp.at<cv::Vec3b>(cv::Point(sub_x, sub_y)) = color;
+                }
+            }
+
+            // now we need to check for diagonals not attached to n!
+            Node* n = graph->at(y)->at(x);
+            Node* top = n->top ? nullptr : getIfExists(y - 1, x);
+            Node* bottom = n->bottom ? nullptr : getIfExists(y + 1, x);
+
+            // are there detached diagonals?
+            if (top && top->bottomLeft) {
+                temp.at<cv::Vec3b>(0, 0) = img->at<cv::Vec3b>(cv::Point(p.x, p.y - 1));
+            }
+            if (top && top->bottomRight) {
+                temp.at<cv::Vec3b>(0, 2) = img->at<cv::Vec3b>(cv::Point(p.x, p.y - 1));
+            }
+            if (bottom && bottom->topLeft) {
+                temp.at<cv::Vec3b>(2, 0) = img->at<cv::Vec3b>(cv::Point(p.x, p.y + 1));
+            }
+            if (bottom && bottom->topRight) {
+                temp.at<cv::Vec3b>(2, 2) = img->at<cv::Vec3b>(cv::Point(p.x, p.y + 1));
+            }
+
+            for (int b = 0; b < 3; b++) {
+                for (int a = 0; a < 3; a++) {
+                    cv::Point mPt = cv::Point(x * 3 + a, y * 3 + b);
+                    cv::Point tPt = cv::Point(a, b);
+                    m->at<cv::Vec3b>(mPt) = temp.at<cv::Vec3b>(tPt);
+                }
+            }
+        }
+    }
+}

@@ -24,6 +24,7 @@ public:
     void runHeuristics();
 
     void computeVoronoi(cv::Mat*);
+    void computeVoronoi2(cv::Mat*);
 
 private:
     enum class FillType { FULL, NO_CORNER, THREE_CORNER, FOUR_CORNER, DIAGONAL, CARD_END, DIAG_END, NONE };
