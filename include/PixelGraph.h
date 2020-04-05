@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <unordered_map>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "Node.h"
 #include "Polygon.h"
@@ -30,73 +31,26 @@ public:
 
 private:
     enum class FillType { FULL, NO_CORNER, THREE_CORNER, FOUR_CORNER, DIAGONAL, CARD_END, DIAG_END, NONE };
-    using PixelToPolygon = std::vector<std::vector<Polygon*>>;
+
+    class GridIntersection;
+    class WalkInfo {
+    public:
+        WalkInfo();
+        WalkInfo(GridIntersection* destination, cv::Point2f cornerPosition);
+
+        GridIntersection* destination;
+        cv::Point2f cornerPosition;
+    };
     
-    // Booleans determine which paths exist to traverse through this node, and also which corners are shifted
+    // Contains information about how to walk along edges to generate contours, and which corners are shifted according
+    // to the rules for simplified voronoi
     class GridIntersection {
     public:
-        // Corner shifts diagonally away from intersection by 1/4 pixel: applies to all turns -- CW and CCW
-        //      / | ^
-        //     / ^|\ \
-        // <--+ / | \ +---
-        // ----+  |  +--->
-        // ===============
-        // <---+  |  +----
-        // ---+ \ | / +-->
-        //     \ \|V /
-        //      V | /
-        bool topLeftShift;
-        bool topRightShift;
-        bool bottomLeftShift;
-        bool bottomRightShift;
+        cv::Point2i pos;
 
-        // Walking in from the left: CW turn (polygon bottom left), straight (polygon bottom), CCW ("/" diagonal)
-        //       | ^
-        //       | |
-        //       | |
-        // ========|====
-        // ----+---+--->
-        //     | |
-        //     V |
-        bool leftToBottom;
-        bool leftToRight;
-        bool leftToTop;
-
-        // Walking in from the top: CW turn (polygon top left), straight (polygon left), CCW ("\" diagonal)
-        //     | |
-        //     | |
-        // <---+ |
-        // ====|========
-        //     +------->
-        //     | |
-        //     V |
-        bool topToLeft;
-        bool topToBottom;
-        bool topToRight;
-
-        // Walking in from the right: CW turn (polygon top right), straight (polygon top), CCW ("/" diagonal)
-        //       | ^
-        //       | |
-        // <---+---+----
-        // ====|========
-        //     | |
-        //     | |
-        //     V |
-        bool rightToTop;
-        bool rightToLeft;
-        bool rightToBottom;
-
-        // Walking in from the bottom: CW turn (polygon bottom right), straight (polygon right), CCW ("\" diagonal)
-        //       | ^
-        //       | |
-        // <-------+
-        // ========|====
-        //       | +--->
-        //       | |
-        //       | |
-        bool bottomToRight;
-        bool bottomToTop;
-        bool bottomToLeft;
+        // Maps the source node to a tuple containing the destination node, whether the corner is shifted,
+        // and the corner position
+        std::unordered_map<GridIntersection*, WalkInfo> contourWalkMap;
     };
 
     std::vector<std::vector<GridIntersection>> grid;
@@ -127,7 +81,6 @@ private:
     bool hasExternalDiagonals(Node*, int, int);
     int countExternalDiagonals(Node*, int, int);
 
-    void computePolygon(int startRow, int startCol, Polygon& polygon, PixelToPolygon& pixelToPolygon);
-
+    GridIntersection* getIntersectionIfExists(int r, int c);
     void initGridIntersection(int row, int col, GridIntersection& intersection);
 };

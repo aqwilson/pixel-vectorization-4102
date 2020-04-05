@@ -10,8 +10,8 @@ class Polygon {
 
 public:
     Contour contour;
-    std::vector<Polygon> holes;
     cv::Vec3b color;
+    int depth;
 
     Polygon();
     ~Polygon();
