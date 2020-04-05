@@ -314,7 +314,7 @@ void PixelGraph::runIslandHeuristic(cv::Point topLeft, cv::Point2f* weightVals){
 
 int PixelGraph::GetCurveLength(Node* startingNode1, Node* startingNode2) {
 
-    //Calculate length of curve from top left to bottom right
+    //Calculate length of curve source top left to bottom right
     Node* track1 = startingNode1;
     Node* track2 = startingNode2;
 
@@ -699,7 +699,7 @@ void PixelGraph::calculateFillType(std::vector<std::vector<FillType>>& fills) {
                     fills[y][x] = FillType::NO_CORNER;
                 }
                 else {
-                    // now we need to check for diagonals that are NOT from this colour!
+                    // now we need to check for diagonals that are NOT source this colour!
                     bool otherDiagonals = hasExternalDiagonals(n, x, y);
 
                     // we can also have an elbow in a limited set of valence 3 scenarios, which we'll check for here as well
@@ -1126,224 +1126,235 @@ void PixelGraph::computeAllPolygons(std::vector<Polygon>& polygons) {
 
     polygons.clear();
 
+    // Create all intersections
     grid.resize(numRows + 1.0);
     for (int r = 0; r < numRows + 1; r++) {
         grid[r].resize(numCols + 1.0);
+    }
+    // Initialize intersection properties
+    for (int r = 0; r < numRows + 1; r++) {
         for (int c = 0; c < numCols + 1; c++) {
             initGridIntersection(r, c, grid[r][c]);
         }
     }
 
-    std::cout << "Lol" << std::endl;
+    // Begin checking each intersection for remaining contours to walk
+    for (int r = 0; r < numRows + 1; r++) {
+        for (int c = 0; c < numCols + 1; c++) {
+            GridIntersection* start = &grid[r][c];
+            // Exhaust all contours that include this intersection
+            while (!start->contourWalkMap.empty()) {
+                // Create a new polygon
+                Polygon& poly = polygons.emplace_back();
 
+                // Set the source node to be any node CCW along a contour
+                GridIntersection* source = start->contourWalkMap.begin()->first;
+                GridIntersection* through = start;
 
+                // Determine the color of the polygon
+                if (source->pos.x < through->pos.x - 0.5f) {
+                    // Coming from left, so use bottom left pixel
+                    poly.color = img->at<cv::Vec3b>(through->pos.y, through->pos.x - 1);
+                }
+                else if (source->pos.y < through->pos.y - 0.5f) {
+                    // Coming from top, so use top left pixel
+                    poly.color = img->at<cv::Vec3b>(through->pos.y - 1, through->pos.x - 1);
+                }
+                else if (source->pos.x > through->pos.x + 0.5f) {
+                    // Coming from right, so use top right pixel
+                    poly.color = img->at<cv::Vec3b>(through->pos.y - 1, through->pos.x);
+                }
+                else if (source->pos.y > through->pos.y + 0.5f) {
+                    // Coming from bottom, so use bottom right pixel
+                    poly.color = img->at<cv::Vec3b>(through->pos.y, through->pos.x);
+                }
 
-    /*
+                int turnCount = 0;
+                do {
+                    // Walk to the next neighbor and erase the connection behind us
+                    WalkInfo info = through->contourWalkMap[source];
+                    through->contourWalkMap.erase(source);
 
-    // The leftmost node of the previous row, within each polygon
-    std::vector<Node*> activeNodes;
-    // List of the open polygons. Indices match those of activeNodes
-    std::vector<Polygon*> activePolygons;
+                    // Add the new corner
+                    poly.contour.push_back(info.cornerPosition);
 
-    // Start in the top left corner
-    activeNodes.push_back(graph->at(0)->at(0));
-    activePolygons.push_back(&polygons.emplace_back());
-    activePolygons.back()->color = img->at<cv::Vec3b>(0, 0);
-    // Add the bottom left, top left, and top right points to new polygon
-    activePolygons.back()->contour.push_back(cv::Point2f(1, 0));
-    activePolygons.back()->contour.push_back(cv::Point2f(0, 0));
-    activePolygons.back()->contour.push_back(cv::Point2f(0, 1));
+                    if (source->pos.x < through->pos.x - 0.5f) {
+                        // Coming from left
 
-    // Iterate the rest of the nodes in the first row
-    for (int c = 1; c < numCols; c++) {
-        // If disconnected from the node to the left, create a new polygon
-        if (graph->at(0)->at(c - 1.0)->right == nullptr) {
-            activeNodes.push_back(graph->at(0)->at(c));
+                        if (info.destination->pos.y < through->pos.y - 0.5f) {
+                            // Going to top
+                            turnCount--;
+                        } else if (info.destination->pos.y > through->pos.y + 0.5f) {
+                            // Going to bottom
+                            turnCount++;
+                        }
+                    } else if (source->pos.y < through->pos.y - 0.5f) {
+                        // Coming from top
 
-            // Create new polygon
-            activePolygons.push_back(&polygons.emplace_back());
-            activePolygons.back()->color = img->at<cv::Vec3b>(0, c);
+                        if (info.destination->pos.x < through->pos.x - 0.5f) {
+                            // Going to left
+                            turnCount++;
+                        } else if (info.destination->pos.x > through->pos.x + 0.5f) {
+                            // Going to right
+                            turnCount--;
+                        }
+                    } else if (source->pos.x > through->pos.x + 0.5f) {
+                        // Coming from right
 
-            // Add the top left point to new polygon
-            activePolygons.back()->contour.push_back(cv::Point2f(c, 0));
-        }
-        // Add the top right point to active polygon
-        activePolygons.back()->contour.push_back(cv::Point2f(c + 1, 0));
-    }
+                        if (info.destination->pos.y < through->pos.y - 0.5f) {
+                            // Going to top
+                            turnCount++;
+                        } else if (info.destination->pos.y > through->pos.y + 0.5f) {
+                            // Going to bottom
+                            turnCount--;
+                        }
+                    } else if (source->pos.y > through->pos.y + 0.5f) {
+                        // Coming from bottom
 
-    // Iterate the rest of the rows
-    for (int r = 1; r < numRows; r++) {
-        std::vector<Node*> newActiveNodes;
-        std::vector<Polygon*> newActivePolygons;
+                        if (info.destination->pos.x < through->pos.x - 0.5f) {
+                            // Going to left
+                            turnCount--;
+                        } else if (info.destination->pos.x > through->pos.x + 0.5f) {
+                            // Going to right
+                            turnCount++;
+                        }
+                    }
 
-        // Start with the leftmost node
-        Node* n = graph->at(r)->at(0);
-        newActiveNodes.push_back(n);
+                    // Update the source and through intersections
+                    source = through;
+                    through = info.destination;
+                } while (through != start);
 
-        // If disconnected from the upper node
-        if (!n->top) {
-            // Create new polygon
-            activePolygons.push_back(&polygons.emplace_back());
-            activePolygons.back()->color = img->at<cv::Vec3b>(0, r);
-
-            // Get the above polygon
-            auto& abovePolyContour = activePolygons[0]->contour;
-
-            // Add bottom left and top left point to the new polygon
-            activePolygons.back()->contour.push_back(cv::Point2f(0, r + 1));
-            activePolygons.back()->contour.push_back(cv::Point2f(0, r));
-
-            // If connected to the upper right node
-            if (n->topRight) {
-                // Add the top right point -- inset toward the upper node -- to both polygons
-                abovePolyContour.insert(abovePolyContour.begin(), cv::Point2f(1 - 0.25f, r - 0.25f));
-                activePolygons.back()->contour.push_back(cv::Point2f(1 - 0.25f, r - 0.25f));
-            }
-            // If upper node is connected to its lower right node
-            else if (graph->at(r - 1.0)->at(0)->bottomRight) {
-                // Add the top right point -- inset toward the current node -- to both polygons
-                abovePolyContour.insert(abovePolyContour.begin(), cv::Point2f(1 - 0.25f, r + 0.25f));
-                activePolygons.back()->contour.push_back(cv::Point2f(1 - 0.25f, r + 0.25f));
-            }
-            else {
-                // Add the top right point to both polygons
-                abovePolyContour.insert(abovePolyContour.begin(), cv::Point2f(1, r));
-                activePolygons.back()->contour.push_back(cv::Point2f(1, r));
-            }
-        }
-
-        for (int c = 1; c < numCols; c++) {
-            // If disconnected from the node to the left, create a new polygon
-            if (graph->at(0)->at(c - 1.0)->right == nullptr) {
-                activeNodes.push_back(graph->at(0)->at(c));
-
-                // Create new polygon
-                activePolygons.push_back(&polygons.emplace_back());
-                activePolygons.back()->color = img->at<cv::Vec3b>(0, c);
-
-                // Add the top left point to new polygon
-                activePolygons.back()->contour.push_back(cv::Point2f(c, 0));
-            }
-            // Add the top right point to active polygon
-            activePolygons.back()->contour.push_back(cv::Point2f(c + 1, 0));
-        }
-    }
-
-
-
-
-    PixelToPolygon pixelToPolygon(numRows);
-    for (int r = 0; r < numRows; r++) {
-        pixelToPolygon[0].resize(numCols);
-        for (int c = 0; c < numCols; c++) {
-            if (pixelToPolygon[r][c] == nullptr) {
-                polygons.emplace_back();
-                computePolygon(r, c, polygons.back(), pixelToPolygon);
+                // Discard the polygon if the cumulative number of CW - CCW turns was not 4 (we only want CW contours)
+                if (turnCount != 4) {
+                    polygons.pop_back();
+                }
             }
         }
     }
+
+    /* I don't think we need this since we discover the polygons from top-left to bottom-right
+    // If any polygons are contained inside another polygon, add their contour as a hole in the outer polygon
+    for (int i = 0; i < polygons.size(); i++) {
+        for (int j = 0; j < polygons.size(); j++) {
+            if (i == j) {
+                continue;
+            }
+            // If the point p is contained inside an outer polygon, increase the depth of the inner polygon
+            cv::Point2f p = polygons[j].contour[0];
+            if (cv::pointPolygonTest(polygons[i].contour, p, false)) {
+                polygons[j].depth++;
+            }
+        }
+    }
+
+    // Sort polygons by depth
+    std::sort(polygons.begin(), polygons.end(), [](Polygon& a, Polygon& b) {
+        return a.depth > b.depth;
+    });
     */
 }
 
-void PixelGraph::computePolygon(int startRow, int startCol, Polygon& polygon, PixelToPolygon &pixelToPolygon) {
-    polygon.contour.clear();
-    polygon.holes.clear();
+PixelGraph::WalkInfo::WalkInfo() {
+    this->destination = nullptr;
+    this->cornerPosition = cv::Point2f();
+}
 
-    cv::Vec3b color = img->at<cv::Vec3b>(startRow, startCol);
+PixelGraph::WalkInfo::WalkInfo(GridIntersection* destination, cv::Point2f cornerPosition) {
+    this->destination = destination;
+    this->cornerPosition = cornerPosition;
+}
+
+PixelGraph::GridIntersection* PixelGraph::getIntersectionIfExists(int r, int c) {
+    if (r < 0 || r >= grid.size() || c < 0 || c >= grid[r].size()) {
+        return nullptr;
+    }
+    return &grid[r][c];
 }
 
 void PixelGraph::initGridIntersection(int row, int col, PixelGraph::GridIntersection& intersection) {
-    // Get the 4 surrounding nodes: top-left, top-right, bottom-left, bottom-right
+    intersection.pos = cv::Point2i(col, row);
+
+    // Get the 4 surrounding nodes that meet at this intersection
     Node* topLeft = getIfExists(row - 1, col - 1);
     Node* topRight = getIfExists(row - 1, col);
     Node* bottomLeft = getIfExists(row, col - 1);
     Node* bottomRight = getIfExists(row, col);
 
-    // Top left:
+    // Get the 4 adjacent intersections
+    GridIntersection* left = getIntersectionIfExists(row, col - 1);
+    GridIntersection* top = getIntersectionIfExists(row - 1, col);
+    GridIntersection* right = getIntersectionIfExists(row, col + 1);
+    GridIntersection* bottom = getIntersectionIfExists(row + 1, col);
 
-    // One vs.all
-    if (topLeft && !topLeft->right && !topLeft->bottom && !topLeft->bottomRight) {
-        intersection.topToLeft = true;
-        // Don't add the CCW direction if we are at the edge of the image
-        if (bottomRight) {
-            intersection.leftToTop = true;
-        }
-
-        // "/" diagonal of a different color, shift corner
-        if (topRight && topRight->bottomLeft) {
-            intersection.topLeftShift = true;
-        }
-    }
-
-
-
-
+    auto& map = intersection.contourWalkMap;
+    auto p = intersection.pos;
 
     // Top left must exist and not be connected to other nodes
     if (topLeft && !topLeft->right && !topLeft->bottom && !topLeft->bottomRight) {
-        intersection.topToLeft = true;
-
         // "/" diagonal of a different color, add the CCW direction and also shift the corner
         if (topRight && topRight->bottomLeft) {
-            intersection.leftToTop = true;
-
-            intersection.topLeftShift = true;
+            cv::Point2f cornerPoint(p.x - 0.25f, p.y - 0.25f);
+            map[top] = WalkInfo(left, cornerPoint);
+            map[left] = WalkInfo(top, cornerPoint);
+        } else {
+            map[top] = WalkInfo(left, p);
         }
     }
 
     // Top right must exist and not be connected to other nodes
     if (topRight && !topRight->left && !topRight->bottom && !topRight->bottomLeft) {
-        intersection.rightToTop = true;
-
         // "\" diagonal of a different color, add the CCW direction and also shift the corner
         if (topLeft && topLeft->bottomRight) {
-            intersection.topToRight = true;
-
-            intersection.topRightShift = true;
+            cv::Point2f cornerPoint(p.x + 0.25f, p.y - 0.25f);
+            map[right] = WalkInfo(top, cornerPoint);
+            map[top] = WalkInfo(right, cornerPoint);
+        } else {
+            map[right] = WalkInfo(top, p);
         }
     }
 
     // Bottom left must exist and not be connected to other nodes
     if (bottomLeft && !bottomLeft->right && !bottomLeft->top && !bottomLeft->topRight) {
-        intersection.leftToBottom = true;
-
         // "\" diagonal of a different color, add the CCW direction and also shift the corner
         if (topLeft && topLeft->bottomRight) {
-            intersection.bottomToLeft = true;
-
-            intersection.bottomLeftShift = true;
+            cv::Point2f cornerPoint(p.x - 0.25f, p.y + 0.25f);
+            map[left] = WalkInfo(bottom, cornerPoint);
+            map[bottom] = WalkInfo(left, cornerPoint);
+        } else {
+            map[left] = WalkInfo(bottom, p);
         }
     }
 
     // Bottom right must exist and not be connected to other nodes
     if (bottomRight && !bottomRight->left && !bottomRight->top && !bottomRight->topLeft) {
-        intersection.bottomToRight = true;
-
         // "/" diagonal of a different color, add the CCW direction and also shift the corner
         if (topRight && topRight->bottomLeft) {
-            intersection.rightToBottom = true;
-
-            intersection.bottomRightShift = true;
+            cv::Point2f cornerPoint(p.x + 0.25f, p.y + 0.25f);
+            map[bottom] = WalkInfo(right, cornerPoint);
+            map[right] = WalkInfo(bottom, cornerPoint);
+        } else {
+            map[bottom] = WalkInfo(right, p);
         }
     }
 
     // The top nodes exist and are connected to each other but not the rest
     if (topLeft && topLeft->right && !topLeft->bottom && !topLeft->bottomRight) {
-        intersection.rightToLeft = true;
+        map[right] = WalkInfo(left, p);
     }
 
     // The bottom nodes exist and are connected to each other but not the rest
     if (bottomLeft && bottomLeft->right && !bottomLeft->top && !bottomLeft->topRight) {
-        intersection.leftToRight = true;
+        map[left] = WalkInfo(right, p);
     }
 
     // The left nodes exist and are connected to each other but not the rest
     if (topLeft && topLeft->bottom && !topLeft->right && !topLeft->bottomRight) {
-        intersection.topToBottom = true;
+        map[top] = WalkInfo(bottom, p);
     }
 
     // The right nodes exist and are connected to each other but not the rest
     if (topRight && topRight->bottom && !topRight->left && !topRight->bottomLeft) {
-        intersection.bottomToTop = true;
+        map[bottom] = WalkInfo(top, p);
     }
 }
