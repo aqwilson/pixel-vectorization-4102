@@ -8,6 +8,7 @@ set(HDRS
     include/GenerateSvg.h
     include/Node.h
     include/PixelGraph.h
+    include/Polygon.h
 )
 
 # Specify project source files
@@ -16,6 +17,7 @@ set(SRCS
     src/Main.cpp
     src/Node.cpp
     src/PixelGraph.cpp
+    src/Polygon.cpp
 )
 
 # Add executable based on the source files, using the project name as the executable name
