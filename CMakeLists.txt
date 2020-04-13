@@ -28,10 +28,13 @@ add_executable(${MAIN_EXECUTABLE} ${HDRS} ${SRCS})
 include_directories(include)
 
 # Link OpenCV
-set(OpenCV_DIR C:/OpenCV4/build/lib)
-find_package( OpenCV REQUIRED )
-include_directories(${OpenCV_INCLUDE_DIRS})
-target_link_libraries(${MAIN_EXECUTABLE} ${OpenCV_LIBS})
+set(OpenCV_LIB_RELEASE C:/OpenCV3.2/build/x64/vc14/lib/opencv_world320.lib)
+set(OpenCV_LIB_DEBUG C:/OpenCV3.2/build/x64/vc14/lib/opencv_world320d.lib)
+set(OpenCV_INCLUDE C:/OpenCV3.2/build/include)
+
+include_directories(${OpenCV_INCLUDE})
+target_link_libraries(${MAIN_EXECUTABLE} ${OpenCV_LIB_RELEASE})
+target_link_libraries(${MAIN_EXECUTABLE} ${OpenCV_LIB_DEBUG})
 
 # Create a dependency to copy the ./input/ directory to the build folder
 add_custom_target(inputDirCopy)
