@@ -45,6 +45,11 @@ add_custom_command(
                 "input")
 add_dependencies(${MAIN_EXECUTABLE} inputDirCopy)
 
+# Use C++ 17
+set_target_properties(${MAIN_EXECUTABLE} PROPERTIES
+            CXX_STANDARD 17
+            CXX_EXTENSIONS OFF)
+
 # The rules here are specific to Windows Systems
 if(WIN32)
     # This will use the proper libraries in debug mode in Visual Studio
