@@ -8,3 +8,6 @@ int generateSvg(const cv::Mat &src, const PixelGraph *graph, const char *outPath
 
 int generateSvg(int width, int height, const std::vector<Polygon>& polygons, const PixelGraph* graph,
         const char* outPath);
+
+int generateSplineSvg(int width, int height, const std::vector<Polygon>& polygons, const PixelGraph* graph,
+    const char* outPath);

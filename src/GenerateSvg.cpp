@@ -154,6 +154,7 @@ int generateSvg(int width, int height, const std::vector<Polygon>& polygons, con
             sstr << p.x << "," << p.y << " ";
         }
         sstr << "\" fill = \"" << colorStr << "\" stroke = \"" << colorStr << "\" stroke-width = \"0\"/>" << std::endl;
+
     }
 
     if (DEBUG_SHOW_GRID) {
@@ -216,6 +217,48 @@ int generateSvg(int width, int height, const std::vector<Polygon>& polygons, con
                 }
             }
         }
+    }
+
+    sstr << "</svg>" << std::endl;
+
+    std::ofstream outputFile;
+    outputFile.open(outPath);
+    outputFile << sstr.rdbuf();
+    outputFile.close();
+
+    return 0;
+}
+
+
+
+int generateSplineSvg(int width, int height, const std::vector<Polygon>& polygons, const PixelGraph* graph,
+    const char* outPath) {
+    const float strokeWidth = 0.07f;
+
+    std::stringstream sstr = std::stringstream();
+    sstr << "<svg version=\"1.1\" baseProfile = \"full\" width = \"" << width << "\" height = \""
+        << height << "\" xmlns = \"http://www.w3.org/2000/svg\">" << std::endl;
+
+    for (const Polygon& poly : polygons) {
+        cv::Vec3b bgr = poly.color;
+        std::string colorStr = (std::stringstream() << "rgb(" << +bgr[2] << ", " << +bgr[1] << ", "
+            << +bgr[0] << ")").str();
+
+        sstr << "    <path d=\"M " << poly.contour[0].x << " " << poly.contour[0].y << " ";
+        
+        std::vector<Polygon::ControlAnchor> controlAnchors = Polygon::GenerateControlAnchors(poly.contour);
+
+        for (int i = 0; i < poly.contour.size(); i++) {
+            Polygon::ControlAnchor currentPoint = Polygon::GetPoint(i, controlAnchors);
+            Polygon::ControlAnchor nextPoint = Polygon::GetPoint(i + 1, controlAnchors);
+
+            cv::Point2f cp1 = currentPoint.nextControlPoint;
+            cv::Point2f cp2 = nextPoint.previousControlPoint;
+
+            sstr << "C " << cp1.x << " " << cp1.y << " " << cp2.x << " " << cp2.y << " ";
+            sstr << nextPoint.anchorPoint.x << " " << nextPoint.anchorPoint.y << " ";
+        }
+        sstr << "\" fill = \"" << colorStr << "\" stroke = \"" << colorStr << "\" stroke-width = \"0\"/>" << std::endl;
     }
 
     sstr << "</svg>" << std::endl;

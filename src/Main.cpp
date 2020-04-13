@@ -16,7 +16,7 @@ int pixelToVector() {
     cv::namedWindow(windowName, cv::WINDOW_AUTOSIZE);
 
     // Load the image
-    cv::Mat src = cv::imread("./input/Watt_Original.png");
+    cv::Mat src = cv::imread("./input/Cactuar_Original.png");
 
     PixelGraph* p = new PixelGraph(&src);
 
@@ -33,7 +33,7 @@ int pixelToVector() {
     std::vector<Polygon>* polygons = new std::vector<Polygon>();
     p->computeAllPolygons(*polygons);
 
-    generateSvg(src.cols, src.rows, *polygons, p, "bitmap_to_svg.svg");
+    generateSplineSvg(src.cols, src.rows, *polygons, p, "bitmap_to_svg.svg");
 
     // Show the image
     // cv::imshow(windowName, src);
