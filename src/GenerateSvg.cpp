@@ -139,7 +139,7 @@ int generateSvg(const cv::Mat& src, const PixelGraph* graph, const char* outPath
 
 int generateSvg(int width, int height, const std::vector<Polygon>& polygons, const PixelGraph* graph,
         const char* outPath) {
-    const float strokeWidth = 0.07f;
+    const float strokeWidth = 0.05f;
 
     std::stringstream sstr = std::stringstream();
     sstr << "<svg version=\"1.1\" baseProfile = \"full\" width = \"" << width << "\" height = \""
@@ -153,7 +153,8 @@ int generateSvg(int width, int height, const std::vector<Polygon>& polygons, con
         for (cv::Point2f p : poly.contour) {
             sstr << p.x << "," << p.y << " ";
         }
-        sstr << "\" fill = \"" << colorStr << "\" stroke = \"" << colorStr << "\" stroke-width = \"0\"/>" << std::endl;
+        sstr << "\" fill = \"" << colorStr << "\" stroke = \"" << colorStr << "\" stroke-width = \"" << strokeWidth
+            << "\"/>" << std::endl;
     }
 
     if (DEBUG_SHOW_GRID) {
