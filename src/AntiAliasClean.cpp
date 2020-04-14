@@ -54,6 +54,12 @@ void convertBGRtoHSL(cv::Vec3b& inputBGR, int& outLum, int& outSat, int& outHue)
         hue = 60 * (((R - G) / delta) + 4);
     }
 
+    //If hue is a negative angle
+    if (hue < 0)
+    {
+        hue = 360 + hue;
+    }
+
     hue = hue / 360;
     hue = hue * 239;
 
