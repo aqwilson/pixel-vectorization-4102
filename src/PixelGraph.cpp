@@ -280,7 +280,7 @@ void PixelGraph::runSparseHeuristic(cv::Point topLeft, cv::Point2f* weightVals){
             }
         }
     }
-
+    
     // give weight to the SPARSER connections, as sparser values are foreground
     if (tlConnNum < trConnNum) {
         weightVals->x = trConnNum - tlConnNum;
@@ -410,7 +410,7 @@ void PixelGraph::connections(std::vector<std::vector<ConnType>>& connGraph, cv::
             for (int x = 0; x < 8; x++) {
 
                 // untested
-                if (connGraph[y][x] == CONNECTED) {
+                if (connGraph[y][x] == UNTESTED) {
                     remainingUntested = true;
                     continue;
                 }
