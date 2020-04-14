@@ -7,6 +7,7 @@
 #include "Polygon.h"
 #include "GenerateSvg.h"
 #include "PixelGraph.h"
+#include "AntiAliasClean.h"
 
 extern const bool DEBUG_SHOW_GRAPH = 0;
 extern const bool DEBUG_SHOW_GRID = 0;

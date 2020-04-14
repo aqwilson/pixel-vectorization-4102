@@ -5,6 +5,7 @@ project(Image_Vectorization)
 
 # Specify project header files
 set(HDRS
+	include/AntiAliasClean.h
     include/GenerateSvg.h
     include/Node.h
     include/PixelGraph.h
@@ -13,6 +14,7 @@ set(HDRS
 
 # Specify project source files
 set(SRCS
+	src/AntiAliasClean.cpp
     src/GenerateSvg.cpp
     src/Main.cpp
     src/Node.cpp
