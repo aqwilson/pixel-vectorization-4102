@@ -1,8 +1,10 @@
 #pragma once
 
 #include <vector>
+#include <unordered_map>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "Node.h"
+#include "Polygon.h"
 
 class PixelGraph {
 
@@ -25,8 +27,33 @@ public:
 
     void computeVoronoi(cv::Mat*);
 
+    void computeAllPolygons(std::vector<Polygon> &polygons);
+
 private:
     enum class FillType { FULL, NO_CORNER, THREE_CORNER, FOUR_CORNER, DIAGONAL, CARD_END, DIAG_END, NONE };
+
+    class GridIntersection;
+    class WalkInfo {
+    public:
+        WalkInfo();
+        WalkInfo(GridIntersection* destination, cv::Point2f cornerPosition);
+
+        GridIntersection* destination;
+        cv::Point2f cornerPosition;
+    };
+    
+    // Contains information about how to walk along edges to generate contours, and which corners are shifted according
+    // to the rules for simplified voronoi
+    class GridIntersection {
+    public:
+        cv::Point2i pos;
+
+        // Maps the source node to a tuple containing the destination node, whether the corner is shifted,
+        // and the corner position
+        std::unordered_map<GridIntersection*, WalkInfo> contourWalkMap;
+    };
+
+    std::vector<std::vector<GridIntersection>> grid;
 
     void runCurveHeuristic(cv::Point, cv::Point2f*);
     void runSparseHeuristic(cv::Point, cv::Point2f*);
@@ -53,4 +80,7 @@ private:
     void calculateFillType(std::vector<std::vector<FillType>>&);
     bool hasExternalDiagonals(Node*, int, int);
     int countExternalDiagonals(Node*, int, int);
+
+    GridIntersection* getIntersectionIfExists(int r, int c);
+    void initGridIntersection(int row, int col, GridIntersection& intersection);
 };

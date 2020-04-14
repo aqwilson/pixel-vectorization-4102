@@ -5,21 +5,19 @@ project(Image_Vectorization)
 
 # Specify project header files
 set(HDRS
-    include/EdgeDetection.h
     include/GenerateSvg.h
-    include/Hybrid.h
     include/Node.h
     include/PixelGraph.h
+    include/Polygon.h
 )
 
 # Specify project source files
 set(SRCS
-    src/EdgeDetection.cpp
     src/GenerateSvg.cpp
-    src/Hybrid.cpp
     src/Main.cpp
     src/Node.cpp
     src/PixelGraph.cpp
+    src/Polygon.cpp
 )
 
 # Add executable based on the source files, using the project name as the executable name

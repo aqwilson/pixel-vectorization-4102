@@ -1,6 +1,7 @@
 #include "PixelGraph.h"
 #include <iostream>
 #include <algorithm>
+#include <deque>
 
 PixelGraph::PixelGraph() {
     img = NULL;
@@ -313,7 +314,7 @@ void PixelGraph::runIslandHeuristic(cv::Point topLeft, cv::Point2f* weightVals){
 
 int PixelGraph::GetCurveLength(Node* startingNode1, Node* startingNode2) {
 
-    //Calculate length of curve from top left to bottom right
+    //Calculate length of curve source top left to bottom right
     Node* track1 = startingNode1;
     Node* track2 = startingNode2;
 
@@ -698,7 +699,7 @@ void PixelGraph::calculateFillType(std::vector<std::vector<FillType>>& fills) {
                     fills[y][x] = FillType::NO_CORNER;
                 }
                 else {
-                    // now we need to check for diagonals that are NOT from this colour!
+                    // now we need to check for diagonals that are NOT source this colour!
                     bool otherDiagonals = hasExternalDiagonals(n, x, y);
 
                     // we can also have an elbow in a limited set of valence 3 scenarios, which we'll check for here as well
@@ -1117,4 +1118,243 @@ int PixelGraph::countExternalDiagonals(Node* n, int x, int y) {
     if (bottom != NULL && bottom->topRight != NULL) diagonals++;
 
     return diagonals;
+}
+
+void PixelGraph::computeAllPolygons(std::vector<Polygon>& polygons) {
+    int numRows = graph->size();
+    int numCols = graph->at(0)->size();
+
+    polygons.clear();
+
+    // Create all intersections
+    grid.resize(numRows + 1.0);
+    for (int r = 0; r < numRows + 1; r++) {
+        grid[r].resize(numCols + 1.0);
+    }
+    // Initialize intersection properties
+    for (int r = 0; r < numRows + 1; r++) {
+        for (int c = 0; c < numCols + 1; c++) {
+            initGridIntersection(r, c, grid[r][c]);
+        }
+    }
+
+    // Begin checking each intersection for remaining contours to walk
+    for (int r = 0; r < numRows + 1; r++) {
+        for (int c = 0; c < numCols + 1; c++) {
+            GridIntersection* start = &grid[r][c];
+            // Exhaust all contours that include this intersection
+            while (!start->contourWalkMap.empty()) {
+                // Create a new polygon
+                Polygon& poly = polygons.emplace_back();
+
+                // Set the source node to be any node CCW along a contour
+                GridIntersection* source = start->contourWalkMap.begin()->first;
+                GridIntersection* through = start;
+
+                // Determine the color of the polygon
+                if (source->pos.x < through->pos.x - 0.5f) {
+                    // Coming from left, so use bottom left pixel
+                    poly.color = img->at<cv::Vec3b>(through->pos.y, through->pos.x - 1);
+                }
+                else if (source->pos.y < through->pos.y - 0.5f) {
+                    // Coming from top, so use top left pixel
+                    poly.color = img->at<cv::Vec3b>(through->pos.y - 1, through->pos.x - 1);
+                }
+                else if (source->pos.x > through->pos.x + 0.5f) {
+                    // Coming from right, so use top right pixel
+                    poly.color = img->at<cv::Vec3b>(through->pos.y - 1, through->pos.x);
+                }
+                else if (source->pos.y > through->pos.y + 0.5f) {
+                    // Coming from bottom, so use bottom right pixel
+                    poly.color = img->at<cv::Vec3b>(through->pos.y, through->pos.x);
+                }
+
+                int turnCount = 0;
+                do {
+                    // Walk to the next neighbor and erase the connection behind us
+                    WalkInfo info = through->contourWalkMap[source];
+                    through->contourWalkMap.erase(source);
+
+                    // Add the new corner
+                    poly.contour.push_back(info.cornerPosition);
+
+                    if (source->pos.x < through->pos.x - 0.5f) {
+                        // Coming from left
+
+                        if (info.destination->pos.y < through->pos.y - 0.5f) {
+                            // Going to top
+                            turnCount--;
+                        } else if (info.destination->pos.y > through->pos.y + 0.5f) {
+                            // Going to bottom
+                            turnCount++;
+                        }
+                    } else if (source->pos.y < through->pos.y - 0.5f) {
+                        // Coming from top
+
+                        if (info.destination->pos.x < through->pos.x - 0.5f) {
+                            // Going to left
+                            turnCount++;
+                        } else if (info.destination->pos.x > through->pos.x + 0.5f) {
+                            // Going to right
+                            turnCount--;
+                        }
+                    } else if (source->pos.x > through->pos.x + 0.5f) {
+                        // Coming from right
+
+                        if (info.destination->pos.y < through->pos.y - 0.5f) {
+                            // Going to top
+                            turnCount++;
+                        } else if (info.destination->pos.y > through->pos.y + 0.5f) {
+                            // Going to bottom
+                            turnCount--;
+                        }
+                    } else if (source->pos.y > through->pos.y + 0.5f) {
+                        // Coming from bottom
+
+                        if (info.destination->pos.x < through->pos.x - 0.5f) {
+                            // Going to left
+                            turnCount--;
+                        } else if (info.destination->pos.x > through->pos.x + 0.5f) {
+                            // Going to right
+                            turnCount++;
+                        }
+                    }
+
+                    // Update the source and through intersections
+                    source = through;
+                    through = info.destination;
+                } while (through != start);
+
+                // Discard the polygon if the cumulative number of CW - CCW turns was not 4 (we only want CW contours)
+                if (turnCount != 4) {
+                    polygons.pop_back();
+                }
+            }
+        }
+    }
+
+    /* I don't think we need this since we discover the polygons from top-left to bottom-right
+    // If any polygons are contained inside another polygon, add their contour as a hole in the outer polygon
+    for (int i = 0; i < polygons.size(); i++) {
+        for (int j = 0; j < polygons.size(); j++) {
+            if (i == j) {
+                continue;
+            }
+            // If the point p is contained inside an outer polygon, increase the depth of the inner polygon
+            cv::Point2f p = polygons[j].contour[0];
+            if (cv::pointPolygonTest(polygons[i].contour, p, false)) {
+                polygons[j].depth++;
+            }
+        }
+    }
+
+    // Sort polygons by depth
+    std::sort(polygons.begin(), polygons.end(), [](Polygon& a, Polygon& b) {
+        return a.depth > b.depth;
+    });
+    */
+}
+
+PixelGraph::WalkInfo::WalkInfo() {
+    this->destination = nullptr;
+    this->cornerPosition = cv::Point2f();
+}
+
+PixelGraph::WalkInfo::WalkInfo(GridIntersection* destination, cv::Point2f cornerPosition) {
+    this->destination = destination;
+    this->cornerPosition = cornerPosition;
+}
+
+PixelGraph::GridIntersection* PixelGraph::getIntersectionIfExists(int r, int c) {
+    if (r < 0 || r >= grid.size() || c < 0 || c >= grid[r].size()) {
+        return nullptr;
+    }
+    return &grid[r][c];
+}
+
+void PixelGraph::initGridIntersection(int row, int col, PixelGraph::GridIntersection& intersection) {
+    intersection.pos = cv::Point2i(col, row);
+
+    // Get the 4 surrounding nodes that meet at this intersection
+    Node* topLeft = getIfExists(row - 1, col - 1);
+    Node* topRight = getIfExists(row - 1, col);
+    Node* bottomLeft = getIfExists(row, col - 1);
+    Node* bottomRight = getIfExists(row, col);
+
+    // Get the 4 adjacent intersections
+    GridIntersection* left = getIntersectionIfExists(row, col - 1);
+    GridIntersection* top = getIntersectionIfExists(row - 1, col);
+    GridIntersection* right = getIntersectionIfExists(row, col + 1);
+    GridIntersection* bottom = getIntersectionIfExists(row + 1, col);
+
+    auto& map = intersection.contourWalkMap;
+    auto p = intersection.pos;
+
+    // Top left must exist and not be connected to other nodes
+    if (topLeft && !topLeft->right && !topLeft->bottom && !topLeft->bottomRight) {
+        // "/" diagonal of a different color, add the CCW direction and also shift the corner
+        if (topRight && topRight->bottomLeft) {
+            cv::Point2f cornerPoint(p.x - 0.25f, p.y - 0.25f);
+            map[top] = WalkInfo(left, cornerPoint);
+            map[left] = WalkInfo(top, cornerPoint);
+        } else {
+            map[top] = WalkInfo(left, p);
+        }
+    }
+
+    // Top right must exist and not be connected to other nodes
+    if (topRight && !topRight->left && !topRight->bottom && !topRight->bottomLeft) {
+        // "\" diagonal of a different color, add the CCW direction and also shift the corner
+        if (topLeft && topLeft->bottomRight) {
+            cv::Point2f cornerPoint(p.x + 0.25f, p.y - 0.25f);
+            map[right] = WalkInfo(top, cornerPoint);
+            map[top] = WalkInfo(right, cornerPoint);
+        } else {
+            map[right] = WalkInfo(top, p);
+        }
+    }
+
+    // Bottom left must exist and not be connected to other nodes
+    if (bottomLeft && !bottomLeft->right && !bottomLeft->top && !bottomLeft->topRight) {
+        // "\" diagonal of a different color, add the CCW direction and also shift the corner
+        if (topLeft && topLeft->bottomRight) {
+            cv::Point2f cornerPoint(p.x - 0.25f, p.y + 0.25f);
+            map[left] = WalkInfo(bottom, cornerPoint);
+            map[bottom] = WalkInfo(left, cornerPoint);
+        } else {
+            map[left] = WalkInfo(bottom, p);
+        }
+    }
+
+    // Bottom right must exist and not be connected to other nodes
+    if (bottomRight && !bottomRight->left && !bottomRight->top && !bottomRight->topLeft) {
+        // "/" diagonal of a different color, add the CCW direction and also shift the corner
+        if (topRight && topRight->bottomLeft) {
+            cv::Point2f cornerPoint(p.x + 0.25f, p.y + 0.25f);
+            map[bottom] = WalkInfo(right, cornerPoint);
+            map[right] = WalkInfo(bottom, cornerPoint);
+        } else {
+            map[bottom] = WalkInfo(right, p);
+        }
+    }
+
+    // The top nodes exist and are connected to each other but not the rest
+    if (topLeft && topLeft->right && !topLeft->bottom && !topLeft->bottomRight) {
+        map[right] = WalkInfo(left, p);
+    }
+
+    // The bottom nodes exist and are connected to each other but not the rest
+    if (bottomLeft && bottomLeft->right && !bottomLeft->top && !bottomLeft->topRight) {
+        map[left] = WalkInfo(right, p);
+    }
+
+    // The left nodes exist and are connected to each other but not the rest
+    if (topLeft && topLeft->bottom && !topLeft->right && !topLeft->bottomRight) {
+        map[top] = WalkInfo(bottom, p);
+    }
+
+    // The right nodes exist and are connected to each other but not the rest
+    if (topRight && topRight->bottom && !topRight->left && !topRight->bottomLeft) {
+        map[bottom] = WalkInfo(top, p);
+    }
 }
