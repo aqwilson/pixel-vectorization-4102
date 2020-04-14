@@ -166,7 +166,7 @@ void findExtremeColours(cv::Mat& inputImg, std::vector<colourBucket>& colourList
             cv::Vec3b pixel = inputImg.at<cv::Vec3b>(i, j);
 
             //If it's a magenta pixel, it's not one of interest. 
-            if (pixel[0] != 255 && pixel[1] != 0 && pixel[2] != 255)
+            if (!(pixel[0] == 255 && pixel[1] == 0 && pixel[2] == 255))
             {
                 int pixelLum, pixelSat, pixelHue;
                 convertBGRtoHSL(pixel, pixelLum, pixelSat, pixelHue);
@@ -385,7 +385,7 @@ void findCoreColours(cv::Mat& inputImg, std::vector<colourBucket>& colourList, s
             cv::Vec3b pixel = inputImg.at<cv::Vec3b>(i, j);
 
             //If it's a magenta pixel, it's not one of interest. 
-            if (pixel[0] != 255 && pixel[1] != 0 && pixel[2] != 255)
+            if (!(pixel[0] == 255 && pixel[1] == 0 && pixel[2] == 255))
             {
                 //If our list is empty, we do want to keep this colour. 
                 if (colourList.size() == 0)
