@@ -1,4 +1,7 @@
 #include "AntiAliasClean.h"
+#include <iostream>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
 
 //INPUT
 //  - inputBGR: a vec 3 with a BGR colour 
