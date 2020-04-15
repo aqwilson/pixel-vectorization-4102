@@ -17,6 +17,18 @@ void findAllColours(cv::Mat& inputImg, std::vector<colourBucket>& colourList, st
 //Given an img, will find the lightest and darkest colours in the image, and store them in colour buckets
 void findExtremeColours(cv::Mat& inputImg, std::vector<colourBucket>& colourList, std::string printLine);
 
+//Return the sum of a colour's RGB values
+int sumRGB(cv::Vec3b& colour);
+
+//Return the total difference between two colour's RGBs 
+int sumRGBDiffs(cv::Vec3b& colourA, cv::Vec3b& colourB);
+
+//Compares two colours to see if they're close by specific hue classifications
+bool closeByHue(cv::Vec3b& colourA, cv::Vec3b& colourB);
+
+//Compare two colours to see if they're close by specific sat classifications
+bool closeBySat(cv::Vec3b& colourA, cv::Vec3b& colourB);
+
 //Given an RGB colour, will find which colour bucket it should go in 
 void placePixelInBucket(cv::Vec3b& pixel, std::vector<colourBucket>& colourList);
 

@@ -234,6 +234,90 @@ void findExtremeColours(cv::Mat& inputImg, std::vector<colourBucket>& colourList
 }
 
 //INPUT
+//  - colour: a colour 
+//OUTPUT 
+//  - int: the sum of its RGB values 
+int sumRGB(cv::Vec3b& colour)
+{
+    return colour[0] + colour[1] + colour[2];
+}
+
+//INPUT
+//  - colourA, colourB: colours to be compared 
+//OUTPUT 
+//  - int: the absolute value of difference between their RGB values 
+int sumRGBDiffs(cv::Vec3b& colourA, cv::Vec3b& colourB)
+{
+    return (abs(colourA[0] - colourB[0]) + abs(colourA[1] - colourB[1]) + abs(colourA[2] - colourB[2]));
+}
+
+//INPUT
+//  - colourA, colourB: colours to be compared 
+//OUTPUT 
+//  - bool: whether or not they meet the qualifications of close by hue
+bool closeByHue(cv::Vec3b& colourA, cv::Vec3b& colourB)
+{
+    int hueA, lumA, satA;
+    convertBGRtoHSL(colourA, lumA, satA, hueA);
+
+    int hueB, lumB, satB;
+    convertBGRtoHSL(colourB, lumB, satB, hueB);
+
+    if (abs(hueA - hueB) <= 10
+        && lumA >= 170 && lumB >= 170
+        && abs(satA - satB) <= 80)
+    {
+        return true;
+    }
+    else if (abs(hueA - hueB) <= 20
+        && lumA <= 65 && lumB <= 65
+        && abs(satA - satB) <= 150)
+    {
+        return true;
+    }
+    else if (abs(hueA - hueB) <= 15
+        && sumRGBDiffs(colourA, colourB) <= 60)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+//INPUT
+//  - colourA, colourB: colours to be compared 
+//OUTPUT 
+//  - bool: whether or not they meet the qualifications of close by saturation
+bool closeBySat(cv::Vec3b& colourA, cv::Vec3b& colourB)
+{
+    int hueA, lumA, satA;
+    convertBGRtoHSL(colourA, lumA, satA, hueA);
+
+    int hueB, lumB, satB;
+    convertBGRtoHSL(colourB, lumB, satB, hueB);
+
+    if (satA <= 30 && satB <= 30
+        && sumRGBDiffs(colourA, colourB) <= 50)
+    {
+        return true;
+    }
+    else if (satA <= 55 && satB <= 55
+        && lumA <= 65 && lumB <= 65
+        && abs(hueA - hueB) <= 35)
+    {
+        return true;
+    }
+    else if (satA <= 55 && satB <= 55
+        && lumA >= 190 && lumB >= 190
+        && abs(hueA - hueB) <= 40)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+//INPUT
 //  - pixel: a single pixel colour 
 //INTPUT/OUTPUT 
 //  - colourList: the vec of colour buckets which will be searched, in order to place pixel in an appropriate place 
@@ -243,11 +327,11 @@ void placePixelInBucket(cv::Vec3b& pixel, std::vector<colourBucket>& colourList)
     //OUTPUT DATA 
     //cout << "new colour RGB: " << (int)pixel[2] << ", " << (int)pixel[1] << ", " << (int)pixel[0] << endl;
 
+    int pixelRGBSum = sumRGB(pixel);
+
     for (int colorListRow = 0; colorListRow < colourList.size(); colorListRow++)
     {
-        uchar currAvgCol0 = colourList[colorListRow].averageCol[0];
-        uchar currAvgCol1 = colourList[colorListRow].averageCol[1];
-        uchar currAvgCol2 = colourList[colorListRow].averageCol[2];
+        int currAvgColRGBSum = sumRGB(colourList[colorListRow].averageCol);
 
         int currAvgLum, currAvgSat, currAvgHue;
         convertBGRtoHSL(colourList[colorListRow].averageCol, currAvgLum, currAvgSat, currAvgHue);
@@ -266,12 +350,11 @@ void placePixelInBucket(cv::Vec3b& pixel, std::vector<colourBucket>& colourList)
             << abs(pixel[0] - currAvgCol0) + abs(pixel[1] - currAvgCol1) + abs(pixel[2] - currAvgCol2) << endl;
         // */
 
-        //FINE TUNING STILL REQUIRED!!!!!!!!
-        if ((currAvgCol0 + currAvgCol1 + currAvgCol2 <= 75 || currAvgLum <= 45 || (currAvgLum <= 80 && currAvgSat <= 60))
-            && (pixel[0] + pixel[1] + pixel[2] <= 75 || currPixelLum <= 45 || (currPixelLum <= 80 && currPixelSat <= 60)))
+        //STILL WORKING ON THIS PART 
+        if ((currAvgColRGBSum <= 75 || currAvgLum <= 45 || (currAvgLum <= 80 && currAvgSat <= 60))
+            && (pixelRGBSum <= 75 || currPixelLum <= 45 || (currPixelLum <= 80 && currPixelSat <= 60)))
         {
-            //cout << "ADDING TO BLACK" << endl;  //OUTPUT DATA 
-            //For now this is the same mixing, but kept it different in case we want to do special case with black 
+            //For now this is the same mixing, but kept it different in case we want to do special case with black (also for sanity's & clarity's sake) 
             //Add current colour to bucket 
             colourList[colorListRow].colours.push_back(pixel);
 
@@ -287,12 +370,11 @@ void placePixelInBucket(cv::Vec3b& pixel, std::vector<colourBucket>& colourList)
 
             break;
         }
-        //FINE TUNING STILL REQUIRED!!!!!!!!
-        else if ((currAvgCol0 + currAvgCol1 + currAvgCol2 >= 710 || currAvgLum >= 215 || (currAvgLum >= 195 && currAvgSat <= 50))
-            && (pixel[0] + pixel[1] + pixel[2] >= 710 || currPixelLum >= 215 || (currAvgLum >= 195 && currAvgSat <= 50)))
+        //CSC
+        else if ((currAvgColRGBSum >= 710 || currAvgLum >= 215 || (currAvgLum >= 195 && currAvgSat <= 50))
+            && (pixelRGBSum >= 710 || currPixelLum >= 215 || (currAvgLum >= 195 && currAvgSat <= 50)))
         {
-            //cout << "ADDING TO WHITE" << endl;//OUTPUT DATA 
-            //For now this is the same mixing, but kept it different in case we want to do special case with white  
+            //For now this is the same mixing, but kept it different in case we want to do special case with white (also for sanity's & clarity's sake) 
             //Add current colour to bucket 
             colourList[colorListRow].colours.push_back(pixel);
 
@@ -308,11 +390,8 @@ void placePixelInBucket(cv::Vec3b& pixel, std::vector<colourBucket>& colourList)
 
             break;
         }
-        //FINE TUNING STILL REQUIRED!!!!!!!!
-        //If their RGB diff is < 100 & hue diff < 20, OR,
-        //If (lum > 185 || lum < 70) && both sats < 50
-        else if (abs(pixel[0] - currAvgCol0) + abs(pixel[1] - currAvgCol1) + abs(pixel[2] - currAvgCol2) <= 100 && abs(currAvgHue - currPixelHue) < 20
-            || (currAvgSat < 50 && currPixelSat < 50 && ((currPixelLum < 70 && currAvgLum < 70) || (currPixelLum > 185 && currAvgLum > 185))))
+        else if (closeByHue(pixel, colourList[colorListRow].averageCol)
+            || closeBySat(pixel, colourList[colorListRow].averageCol))
         {
             //cout << "ADDING TO COLOUR" << endl; //OUTPUT DATA 
             //Add current colour to bucket 
@@ -430,25 +509,21 @@ void compressCoreColours(std::vector<colourBucket>& origColList, std::vector<col
     //Go over all buckets to see if there's any combinations needed
     for (int colListCheck = 0; colListCheck < compColList.size() - 1; colListCheck++)
     {
-        uchar currAvgCol0 = compColList[colListCheck].averageCol[0];
-        uchar currAvgCol1 = compColList[colListCheck].averageCol[1];
-        uchar currAvgCol2 = compColList[colListCheck].averageCol[2];
+        int currAvgColRGBSum = sumRGB(compColList[colListCheck].averageCol);
 
         int currAvgLum, currAvgSat, currAvgHue;
         convertBGRtoHSL(compColList[colListCheck].averageCol, currAvgLum, currAvgSat, currAvgHue);
 
         for (int nextBucket = colListCheck + 1; nextBucket < compColList.size(); nextBucket++)
         {
-            uchar nextBucketAvgCol0 = compColList[nextBucket].averageCol[0];
-            uchar nextBucketAvgCol1 = compColList[nextBucket].averageCol[1];
-            uchar nextBucketAvgCol2 = compColList[nextBucket].averageCol[2];
+            int nextBuckAvgColRGBSum = sumRGB(compColList[nextBucket].averageCol);
 
             int nextBuckAvgLum, nextBuckAvgSat, nextBuckAvgHue;
             convertBGRtoHSL(compColList[nextBucket].averageCol, nextBuckAvgLum, nextBuckAvgSat, nextBuckAvgHue);
 
-            //CSC
-            if ((nextBucketAvgCol0 + nextBucketAvgCol1 + nextBucketAvgCol2 <= 75 || nextBuckAvgLum <= 45 || (nextBuckAvgLum <= 80 && nextBuckAvgSat <= 45))//(nextBuckAvgLum <= 120 && nextBuckAvgSat <= 60)) //
-                && (currAvgCol0 + currAvgCol1 + currAvgCol2 <= 75 || currAvgLum <= 45 || (currAvgLum <= 80 && currAvgSat <= 45)))// (currAvgLum <= 120 && currAvgSat <= 60))) //
+            //STILL WIP 
+            if ((nextBuckAvgColRGBSum <= 75 || nextBuckAvgLum <= 45 || (nextBuckAvgLum <= 80 && nextBuckAvgSat <= 60))
+                && (currAvgColRGBSum <= 75 || currAvgLum <= 45 || (currAvgLum <= 80 && currAvgSat <= 45)))
             {
                 //For now this is the same mixing, but kept it different in case we want to do special case with black (also for sanity's & clarity's sake) 
                 //Add all the colours from colListChick's bucket into nextBucket's
@@ -471,8 +546,8 @@ void compressCoreColours(std::vector<colourBucket>& origColList, std::vector<col
                 break;
             }
             //CSC
-            else if ((nextBucketAvgCol0 + nextBucketAvgCol1 + nextBucketAvgCol2 >= 710 || (nextBuckAvgLum >= 195 && nextBuckAvgSat <= 50))// nextBuckAvgLum >= 215 || (nextBuckAvgLum > 120 && nextBuckAvgSat <= 60))//
-                && (currAvgCol0 + currAvgCol1 + currAvgCol2 >= 710 || currAvgLum >= 215 || (currAvgLum >= 195 && currAvgSat <= 50)))//(currAvgLum > 120 && currAvgSat <= 60 )))//
+            else if ((nextBuckAvgColRGBSum >= 710 || (nextBuckAvgLum >= 195 && nextBuckAvgSat <= 50))
+                && (currAvgColRGBSum >= 710 || currAvgLum >= 215 || (currAvgLum >= 195 && currAvgSat <= 50)))
             {
                 //For now this is the same mixing, but kept it different in case we want to do special case with white (also for sanity's & clarity's sake) 
                 //Add all the colours from colListChick's bucket into nextBucket's
@@ -492,12 +567,9 @@ void compressCoreColours(std::vector<colourBucket>& origColList, std::vector<col
                 compColList.erase(compColList.begin() + colListCheck);
                 colListCheck--;
                 break;
-            }
-            //100                                     //20
-            else if (abs(currAvgCol0 - nextBucketAvgCol0) + abs(currAvgCol1 - nextBucketAvgCol1) + abs(currAvgCol2 - nextBucketAvgCol2) <= 120 && abs(currAvgHue - nextBuckAvgHue) < 30
-                || (currAvgSat < 50 && nextBuckAvgSat < 50 && ((nextBuckAvgLum < 70 && currAvgLum < 70) || (nextBuckAvgLum > 150 && currAvgLum > 150))) //Lum is relatively high or low, and sats are low 
-                || (abs(currAvgHue - nextBuckAvgHue) < 60 && currAvgSat < 110 && nextBuckAvgSat < 110 && (nextBuckAvgLum > 190 && currAvgLum > 190)) //Lum really high, 
-                || (abs(currAvgCol0 - nextBucketAvgCol0) + abs(currAvgCol1 - nextBucketAvgCol1) + abs(currAvgCol2 - nextBucketAvgCol2) < 85 && (nextBuckAvgLum > 170 && currAvgLum > 170)))
+            }                       
+            else if (closeByHue(compColList[colListCheck].averageCol, compColList[nextBucket].averageCol)   
+                || closeBySat(compColList[colListCheck].averageCol, compColList[nextBucket].averageCol))
             {
                 //Add all the colours from colListChick's bucket into nextBucket's
                 for (int i = 0; i < compColList[colListCheck].colours.size(); i++)
