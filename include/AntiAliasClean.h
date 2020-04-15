@@ -29,6 +29,9 @@ bool closeByHue(cv::Vec3b& colourA, cv::Vec3b& colourB);
 //Compare two colours to see if they're close by specific sat classifications
 bool closeBySat(cv::Vec3b& colourA, cv::Vec3b& colourB);
 
+//Compare two colours to see if they're close by specific lum classifications
+bool closeByLum(cv::Vec3b& colourA, cv::Vec3b& colourB);
+
 //Given an RGB colour, will find which colour bucket it should go in 
 void placePixelInBucket(cv::Vec3b& pixel, std::vector<colourBucket>& colourList);
 

@@ -270,13 +270,19 @@ bool closeByHue(cv::Vec3b& colourA, cv::Vec3b& colourB)
         return true;
     }
     else if (abs(hueA - hueB) <= 20
-        && lumA <= 65 && lumB <= 65
+        && lumA <= 60 && lumB <= 60
         && abs(satA - satB) <= 150)
     {
         return true;
     }
     else if (abs(hueA - hueB) <= 15
         && sumRGBDiffs(colourA, colourB) <= 60)
+    {
+        return true;
+    }
+    else if (abs(hueA - hueB) <= 5
+        && abs(lumA - lumB) <= 25
+        && abs(satA - satB) <= 25)
     {
         return true;
     }
@@ -310,6 +316,29 @@ bool closeBySat(cv::Vec3b& colourA, cv::Vec3b& colourB)
     else if (satA <= 55 && satB <= 55
         && lumA >= 190 && lumB >= 190
         && abs(hueA - hueB) <= 40)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+//INPUT
+//  - colourA, colourB: colours to be compared 
+//OUTPUT 
+//  - bool: whether or not they meet the qualifications of close by luminance
+bool closeByLum(cv::Vec3b& colourA, cv::Vec3b& colourB)
+{
+    int hueA, lumA, satA;
+    convertBGRtoHSL(colourA, lumA, satA, hueA);
+
+    int hueB, lumB, satB;
+    convertBGRtoHSL(colourB, lumB, satB, hueB);
+
+    if (abs(lumA - lumB) <= 5
+        && lumA <= 70 && lumB <= 70
+        && abs(hueA - hueB) <= 15
+        && abs(satA - satB) <= 50)
     {
         return true;
     }
@@ -391,7 +420,8 @@ void placePixelInBucket(cv::Vec3b& pixel, std::vector<colourBucket>& colourList)
             break;
         }
         else if (closeByHue(pixel, colourList[colorListRow].averageCol)
-            || closeBySat(pixel, colourList[colorListRow].averageCol))
+            || closeBySat(pixel, colourList[colorListRow].averageCol)
+            || closeByLum(pixel, colourList[colorListRow].averageCol))
         {
             //cout << "ADDING TO COLOUR" << endl; //OUTPUT DATA 
             //Add current colour to bucket 
@@ -569,7 +599,8 @@ void compressCoreColours(std::vector<colourBucket>& origColList, std::vector<col
                 break;
             }                       
             else if (closeByHue(compColList[colListCheck].averageCol, compColList[nextBucket].averageCol)   
-                || closeBySat(compColList[colListCheck].averageCol, compColList[nextBucket].averageCol))
+                || closeBySat(compColList[colListCheck].averageCol, compColList[nextBucket].averageCol)
+                || closeByLum(compColList[colListCheck].averageCol, compColList[nextBucket].averageCol))
             {
                 //Add all the colours from colListChick's bucket into nextBucket's
                 for (int i = 0; i < compColList[colListCheck].colours.size(); i++)
@@ -610,12 +641,14 @@ void printBuckets(cv::Mat& canvas, std::vector<colourBucket>& colourList, cv::St
     //i: the current colour bucket we're looking at 
     for (int i = 0; i < colourList.size(); i++)
     {
-        std::cout << "R: " << (int)(colourList[i].averageCol[2]) << ", G: " << (int)colourList[i].averageCol[1] << ", B: " << (int)colourList[i].averageCol[0] << std::endl;
+        //OUTPUT DATA
+        //std::cout << "R: " << (int)(colourList[i].averageCol[2]) << ", G: " << (int)colourList[i].averageCol[1] << ", B: " << (int)colourList[i].averageCol[0] << std::endl;
 
         int lum, sat, hue;
         convertBGRtoHSL(colourList[i].averageCol, lum, sat, hue);
 
-        std::cout << "\tHue: " << hue << ", Lum: " << lum << ", Sat: " << sat << std::endl;
+        //OUTPUT DATA 
+        //std::cout << "\tHue: " << hue << ", Lum: " << lum << ", Sat: " << sat << std::endl;
 
         //j: drawing that many rows of the current colour at i 
         for (int j = 1; j < colourStripeSize; j++)
