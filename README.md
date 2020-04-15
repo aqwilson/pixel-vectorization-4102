@@ -1,6 +1,33 @@
 # Pixel Art Vectorization for COMP 4102
 Alexandra Wilson, Mitchell Blanchard, Nathan Marshall, and Megan Perera
 
+# Setup
+## Dependencies
+* CMake version 3.8 or higher
+* OpenCV version 3.2
+* VisualStudio
+* C++17
+
+## Building
+* Clone or fork this Git Repo
+* Install OpenCV 3.2 on your system
+* Open the file `CMakeLists.txt`
+* On line 33, make sure that you have the correct path to the RELEASE version of your OpenCV 3.2 library
+* On line 34, make sure that you have the correct path to the DEBUG version of your OpenCV 3.2 library
+* On line 35, makae sure that you have the correct path to the includes folder of your OpenCV 3.2 library
+* Save and close the `CMakeLists.txt` file
+* Open CMake.
+* The path to the source code should be the path to the `pixel-vectorization-4102` folder
+* The path the the build should be the path ot the `pixel-vectorization-4102` folder, plus `/bin`
+* Configure, generate, and open the project.
+* In Visual Studio, build and run the "Image_Vectorization" project
+
+## Customization & Running
+* To change the image that you want to see vectorized, go to `Main.cpp` line 20
+* Change the path to refer to the pixel image that you would like to vectorize. We have provided several in the input folder
+* To see the output, build and run the program
+* Navigate to the `pixel-vectorization-4102` folder and open the `DisplayLargeSVG.html` webpage. This page simply helps to show the SVG at different sizes. The SVG image itself can be found in the `bin` folder and is called `bitmap_to_svg.svg`
+
 # Summary
 Pixel art is difficult to upscale using traditional vectorization methods due to its small scale and the fact that each pixel is meaningful, as traditional vectorization methods rely on edge detection that fails in smaller sample sizes. This project seeks to implement and experiment with the algorithm for pixel art vectorization proposed by Kopf and Lischinski in the paper *Depixelizing Pixel Art (SIGGRAPH 2011)*. Challenges may include improving or developing new heuristics for pixel-art specific edge detection and/or optimizing the splines used to create smoother lines.
 
@@ -44,4 +71,4 @@ Deliverable include:
 * **April 15th:** Final project will be submitted by this day. 
 
 # Results
-We achieved significant results in our implementation for both anti-aliasing cleanup and converting the pixel art images to vectors. We were able to convert and dynamically scale the vectorized images. We deviated from the original algorithms in order to prevent large scale changes. Some of our results may be found in the "results" folder, and we show these results as well in our final paper.
+We achieved significant results in our implementation for both anti-aliasing cleanup and converting the pixel art images to vectors. We were able to convert and dynamically scale the vectorized images. We deviated from the original algorithms in order to prevent large scale changes. Some of our results may be found in the `results` folder, and we show these results as well in our final paper.
