@@ -23,7 +23,8 @@ Alexandra Wilson, Mitchell Blanchard, Nathan Marshall, and Megan Perera
 * In Visual Studio, build and run the "Image_Vectorization" project
 
 ## Customization & Running
-* To change the image that you want to see vectorized, go to `Main.cpp` line 20
+* To switch between using a clean and anti-aliased image, go to line 52 of `Main.cpp`. Set `applyAntiCleanup` to `true` if you want to try using an anti-aliased image, and `false` if  you want to use a normal image.
+* If you are using an anti-aliased image and want to change the image that you are vectorizing, go to line `16` of `Main.cpp`. If you are not using anti-aliasing, go to line `62` of `Main.cpp`.
 * Change the path to refer to the pixel image that you would like to vectorize. We have provided several in the input folder
 * To see the output, build and run the program
 * Navigate to the `pixel-vectorization-4102` folder and open the `DisplayLargeSVG.html` webpage. This page simply helps to show the SVG at different sizes. The SVG image itself can be found in the `bin` folder and is called `bitmap_to_svg.svg`
