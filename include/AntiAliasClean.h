@@ -49,5 +49,8 @@ void printBuckets(cv::Mat& canvas, std::vector<colourBucket>& colourList, cv::St
 //and paint over with the new corresponding colour. 
 void paintImgWithBuckets(cv::Mat& antiAlias, cv::Mat& paintedImg, std::vector<colourBucket>& colours);
 
+//Function for testing and outputting cleanup 
+void testingAntiAliasCleanup();
+
 //Run the cleanup
-void antiAliasCleanup();
+void antiAliasCleanup(cv::Mat& antiAliasImage, cv::Mat& cleanedImage);

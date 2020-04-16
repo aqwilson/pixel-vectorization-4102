@@ -81,7 +81,7 @@ void convertBGRtoHSL(cv::Vec3b& inputBGR, int& outLum, int& outSat, int& outHue)
 //  - colourList: where the unique colours will be stored 
 void findAllColours(cv::Mat& inputImg, std::vector<colourBucket>& colourList, std::string printLine)
 {
-    std::cout << printLine << std::endl;
+    //std::cout << printLine << std::endl;
 
     //ITERATING OVER THE IMAGE MATRIX 
     for (int i = 0; i < inputImg.rows; i++)
@@ -92,7 +92,7 @@ void findAllColours(cv::Mat& inputImg, std::vector<colourBucket>& colourList, st
             cv::Vec3b pixel = inputImg.at<cv::Vec3b>(i, j);
 
             //If it's a magenta pixel, it's not one of interest. 
-            if (!(pixel[0] == 255 && pixel[1] == 0 && pixel[2] == 255))
+            if (!(pixel[0] == 255 && pixel[1] == 255 && pixel[2] == 255))
             {
                 //If our list is empty, we do want to keep this colour. 
                 if (colourList.size() == 0)
@@ -148,7 +148,7 @@ void findAllColours(cv::Mat& inputImg, std::vector<colourBucket>& colourList, st
 //  - colourList: where the darkest and lightest colours will be put. for best use, should be empty to start 
 void findExtremeColours(cv::Mat& inputImg, std::vector<colourBucket>& colourList, std::string printLine)
 {
-    std::cout << printLine << std::endl;
+    //std::cout << printLine << std::endl;
 
     colourBucket currDarkest;
     currDarkest.averageCol = cv::Vec3b(255, 255, 255);
@@ -175,7 +175,7 @@ void findExtremeColours(cv::Mat& inputImg, std::vector<colourBucket>& colourList
             cv::Vec3b pixel = inputImg.at<cv::Vec3b>(i, j);
 
             //If it's a magenta pixel, it's not one of interest. 
-            if (!(pixel[0] == 255 && pixel[1] == 0 && pixel[2] == 255))
+            if (!(pixel[0] == 255 && pixel[1] == 255 && pixel[2] == 255))
             {
                 int pixelLum, pixelSat, pixelHue;
                 convertBGRtoHSL(pixel, pixelLum, pixelSat, pixelHue);
@@ -216,6 +216,7 @@ void findExtremeColours(cv::Mat& inputImg, std::vector<colourBucket>& colourList
         colourList.push_back(currLightest);
     }
 
+    /* OUTPUT DATA
     std::cout << "CURRENT STATUS AFTER EXTREMES: " << std::endl;
     for (int k = 0; k < colourList.size(); k++)
     {
@@ -234,6 +235,7 @@ void findExtremeColours(cv::Mat& inputImg, std::vector<colourBucket>& colourList
         }
     }
     std::cout << "-------------------------------" << std::endl;
+    */
 }
 
 //INPUT
@@ -492,7 +494,7 @@ void placePixelInBucket(cv::Vec3b& pixel, std::vector<colourBucket>& colourList)
 //  - colourList: the resulting average colours 
 void findCoreColours(cv::Mat& inputImg, std::vector<colourBucket>& colourList, std::string printLine)
 {
-    std::cout << printLine << std::endl;
+    //std::cout << printLine << std::endl;
 
     //ITERATING OVER THE IMAGE MATRIX 
     for (int i = 0; i < inputImg.rows; i++)
@@ -503,7 +505,7 @@ void findCoreColours(cv::Mat& inputImg, std::vector<colourBucket>& colourList, s
             cv::Vec3b pixel = inputImg.at<cv::Vec3b>(i, j);
 
             //If it's a magenta pixel, it's not one of interest. 
-            if (!(pixel[0] == 255 && pixel[1] == 0 && pixel[2] == 255))
+            if (!(pixel[0] == 255 && pixel[1] == 255 && pixel[2] == 255))
             {
                 //If our list is empty, we do want to keep this colour. 
                 if (colourList.size() == 0)
@@ -538,7 +540,7 @@ void compressCoreColours(std::vector<colourBucket>& origColList, std::vector<col
     for (int i = 0; i < origColList.size(); i++)
         compColList.push_back(origColList[i]);
 
-    std::cout << printLine << std::endl;
+    //std::cout << printLine << std::endl;
     //Go over all buckets to see if there's any combinations needed
     for (int colListCheck = 0; colListCheck < compColList.size() - 1; colListCheck++)
     {
@@ -687,7 +689,7 @@ void paintImgWithBuckets(cv::Mat& antiAlias, cv::Mat& paintedImg, std::vector<co
             cv::Vec3b pixel = antiAlias.at<cv::Vec3b>(i, j);
 
             //If it's a magenta pixel, it's not one of interest. 
-            if (!(pixel[0] == 255 && pixel[1] == 0 && pixel[2] == 255))
+            if (!(pixel[0] == 255 && pixel[1] == 255 && pixel[2] == 255))
             {
                 //Current pixel is not magenta
                 //Find the actual pixel colour in colourBucket
@@ -737,14 +739,14 @@ void paintImgWithBuckets(cv::Mat& antiAlias, cv::Mat& paintedImg, std::vector<co
     }
 }
 
-//The process for actually cleaning up an antialiased img 
-void antiAliasCleanup()
+//The testing function for cleanup. Outputs lots of data for comparing
+void testingAntiAliasCleanup()
 {
     //Loading in the original (for comparison) and the anti alias imgs 
     cv::String origPic = "Ocarina_Original";
     cv::String antiPic = "Ocarina_Anti";
 
-    cv::Mat imgOriginal = imread("./input/" + origPic + ".png");
+    cv::Mat imgOriginal = imread("./input/" + origPic + ".png"); 
     cv::Mat img_toTestImage = imread("./input/" + antiPic + ".png");
 
     //Canvas used for seeing what colours we're finding
@@ -769,8 +771,8 @@ void antiAliasCleanup()
     cv::Mat cleanedImage = img_Sharp.clone();
 
     //Finding bucket data 
-    std::vector<colourBucket> origImgcolourBuckets;
-    findAllColours(imgOriginal, origImgcolourBuckets, "Original Img colours:");
+    std::vector<colourBucket> origImgcolourBuckets; 
+    findAllColours(imgOriginal, origImgcolourBuckets, "Original Img colours:");  
     std::vector<colourBucket> sharpImgColourBuckets;
     findAllColours(img_Sharp, sharpImgColourBuckets, "Sharp colours");
     std::vector<colourBucket> sharpImgCoreColourBuckets;
@@ -779,7 +781,7 @@ void antiAliasCleanup()
     compressCoreColours(sharpImgCoreColourBuckets, sharpImgCompressedCoreColourBuckets, "Sharp CORE colours");
 
     //Drawing colour data onto canvases 
-    printBuckets(origAllColoursCanvas, origImgcolourBuckets, "Original colours:", 10);
+    printBuckets(origAllColoursCanvas, origImgcolourBuckets, "Original colours:", 10);  
     //printBuckets(antiAliasAllColoursCanvas, antiImgColourBuckets, "Anti-Aliased colors:", 3); //too many colours here tbh, no point 
     printBuckets(sharpAllColoursCanvas, sharpImgColourBuckets, "Sharp colours", 1);
     printBuckets(sharpCoreColoursCanvas, sharpImgCoreColourBuckets, "Sharp CORE colours", 10);
@@ -811,4 +813,33 @@ void antiAliasCleanup()
     imshow(sharpCoreColsCanvasWindow, sharpCoreColoursCanvas); //All core colours in sharpened image 
     imshow(sharpCompCoreColsCanvasWindow, sharpCompressedCoreColoursCanvas); //All COMPRESSED core colours in sharpened image 
     imshow(paintedImgCanvasWindow, cleanedImage);
+}
+
+//The process for actually cleaning up an antialiased img 
+void antiAliasCleanup(cv::Mat& antiAliasImage, cv::Mat& cleanedImage)
+{
+    //Imgs for filtering purposes 
+    cv::Mat img_blurred = antiAliasImage.clone(); //blurred img for sharpening 
+    cv::Mat img_Gauss = antiAliasImage.clone(); //gaussian img for sharpening 
+    cv::Mat img_Sharp = antiAliasImage.clone(); //resulting sharpened img 
+
+    //Finding the sharpened version of the anti-alias img 
+    blur(antiAliasImage, img_blurred, cv::Size(3, 3), cv::Point(-1, -1));
+    GaussianBlur(antiAliasImage, img_Gauss, cv::Size(3, 3), 3);
+    addWeighted(antiAliasImage, 1.5, img_Gauss, -0.5, 0, img_Sharp);
+
+    //Our resulting cleaned image will be based off of sharpened 
+    cv::Mat resultImage = img_Sharp.clone();
+
+    //Finding bucket data 
+    std::vector<colourBucket> sharpImgCoreColourBuckets;
+    findExtremeColours(img_Sharp, sharpImgCoreColourBuckets, "Sharp Extreme Colours being found...");
+    findCoreColours(img_Sharp, sharpImgCoreColourBuckets, "Sharp CORE colours");
+    std::vector<colourBucket> sharpImgCompressedCoreColourBuckets;
+    compressCoreColours(sharpImgCoreColourBuckets, sharpImgCompressedCoreColourBuckets, "Sharp CORE colours");
+
+    //Paint our resulting img 
+    paintImgWithBuckets(img_Sharp, resultImage, sharpImgCompressedCoreColourBuckets);
+
+    cleanedImage = resultImage; 
 }

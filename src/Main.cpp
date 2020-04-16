@@ -12,12 +12,16 @@
 extern const bool DEBUG_SHOW_GRAPH = 0;
 extern const bool DEBUG_SHOW_GRID = 0;
 
-int pixelToVector() {
+void useAntiAlias(cv::Mat& cleanImg) {
+    cv::Mat antiImg = cv::imread("./input/Tank_Anti.png");
+    cleanImg = antiImg.clone(); 
+
+    antiAliasCleanup(antiImg, cleanImg);
+}
+
+int pixelToVector(cv::Mat& src) {
     const char* windowName = "Pixel to Vector";
     cv::namedWindow(windowName, cv::WINDOW_AUTOSIZE);
-
-    // Load the image
-    cv::Mat src = cv::imread("./input/Cactuar_Original.png");
 
     PixelGraph* p = new PixelGraph(&src);
 
@@ -45,5 +49,17 @@ int pixelToVector() {
 }
 
 int main() {
-    return pixelToVector();
+    bool applyAntiCleanup = true;
+
+    if (applyAntiCleanup)
+    {
+        cv::Mat src;
+        useAntiAlias(src);
+        return pixelToVector(src);
+    }
+    else 
+    {
+        cv::Mat src = cv::imread("./input/Ocarina_Original.png");
+        return pixelToVector(src);
+    }
 }
